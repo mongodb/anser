@@ -63,11 +63,6 @@ type SimpleMigration struct {
 	Namespace Namespace `bson:"namespace" json:"namespace" yaml:"namespace"`
 }
 
-type Namespace struct {
-	DB         string `bson:"db_name" json:"db_name" yaml:"db_name"`
-	Collection string `bson:"collection" json:"collection" yaml:"collection"`
-}
-
 // ManualMigrationOperation defines the function object that performs
 // the transformation in the manual migration migrations. Register
 // these functions using RegisterManualMigrationOperation.

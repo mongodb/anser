@@ -20,10 +20,15 @@ import (
 	mgo "gopkg.in/mgo.v2"
 )
 
-var env *envState
+const (
+	defaultMetadataCollection = "migrations.metadata"
+	defaultAnserDB            = "anser"
+)
+
+var globalEnv *envState
 
 func init() {
-	env = &envState{
+	globalEnv = &envState{
 		migrations: make(map[string]ManualMigrationOperation),
 		processor:  make(map[string]DocumentProcessor),
 	}
@@ -44,16 +49,19 @@ type Environment interface {
 	GetManualMigrationOperation(string) (ManualMigrationOperation, bool)
 	RegisterDocumentProcessor(string, DocumentProcessor) error
 	GetDocumentProcessor(string) (DocumentProcessor, bool)
+	SetMetadataNamespace(Namespace) error
+	MetadataNamespace() Namespace
 }
 
 // GetEnvironment returns the global environment object. Because this
 // produces a pointer to the global object, make sure that you have a
 // way to replace it with a mock as needed for testing.
-func GetEnvironment() Environment { return env }
+func GetEnvironment() Environment { return globalEnv }
 
 type envState struct {
 	queue      amboy.Queue
 	session    *mgo.Session
+	metadataNS Namespace
 	migrations map[string]ManualMigrationOperation
 	processor  map[string]DocumentProcessor
 	isSetup    bool
@@ -79,6 +87,8 @@ func (e *envState) Setup(q amboy.Queue, mongodbURI string) error {
 
 	e.queue = q
 	e.session = session
+	e.metadataNS.Collection = defaultMetadataCollection
+	e.metadataNS.DB = defaultAnserDB
 	e.isSetup = true
 
 	return nil
@@ -144,4 +154,23 @@ func (e *envState) GetDocumentProcessor(name string) (DocumentProcessor, bool) {
 
 	docp, ok := e.processor[name]
 	return docp, ok
+}
+
+func (e *envState) SetMetadataNamespace(ns Namespace) error {
+	if !ns.IsValid() {
+		return errors.Errorf("namespace '%+v' is not valid", ns)
+	}
+
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	e.metadataNS = ns
+	return nil
+}
+
+func (e *envState) MetadataNamespace() Namespace {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	return e.metadataNS
 }

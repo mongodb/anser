@@ -13,8 +13,8 @@ func init() {
 
 func NewAggregateMigration(e Environment, m AggregateProducer) amboy.Job {
 	j := makeAggregateProducer()
-	j.MigrationHelper = NewMigrationHelper(e)
 	j.Definition = m
+	j.MigrationHelper = NewMigrationHelper(e)
 	return j
 }
 
@@ -38,7 +38,7 @@ type aggregateMigrationJob struct {
 }
 
 func (j *aggregateMigrationJob) Run() {
-	defer j.MarkComplete()
+	defer j.FinishMigration(j.Definition.Migration, &j.Base)
 
 	env := j.Env()
 

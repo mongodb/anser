@@ -14,8 +14,8 @@ func init() {
 
 func NewSimpleMigration(e Environment, m SimpleMigration) amboy.Job {
 	j := makeSimpleMigration()
-	j.MigrationHelper = NewMigrationHelper(e)
 	j.Definition = m
+	j.MigrationHelper = NewMigrationHelper(e)
 	return j
 }
 
@@ -39,7 +39,7 @@ type simpleMigrationJob struct {
 }
 
 func (j *simpleMigrationJob) Run() {
-	defer j.MarkComplete()
+	defer j.FinishMigration(j.Definition.Migration, &j.Base)
 
 	env := j.Env()
 	session, err := env.GetSession()

@@ -14,8 +14,9 @@ func init() {
 
 func NewManualMigration(e Environment, m ManualMigration) amboy.Job {
 	j := makeManualMigration()
-	j.MigrationHelper = NewMigrationHelper(e)
 	j.Definition = m
+	j.MigrationHelper = NewMigrationHelper(e)
+
 	return j
 }
 
@@ -39,7 +40,7 @@ type manualMigrationJob struct {
 }
 
 func (j *manualMigrationJob) Run() {
-	defer j.MarkComplete()
+	defer j.FinishMigration(j.Definition.Migration, &j.Base)
 
 	env := j.Env()
 
