@@ -45,12 +45,12 @@ type Environment interface {
 	Setup(amboy.Queue, string) error
 	GetSession() (*mgo.Session, error)
 	GetQueue() (amboy.Queue, error)
+	GetDependencyNetwork() (DependencyNetworker, error)
+	MetadataNamespace() Namespace
 	RegisterManualMigrationOperation(string, ManualMigrationOperation) error
 	GetManualMigrationOperation(string) (ManualMigrationOperation, bool)
 	RegisterDocumentProcessor(string, DocumentProcessor) error
 	GetDocumentProcessor(string) (DocumentProcessor, bool)
-	SetMetadataNamespace(Namespace) error
-	MetadataNamespace() Namespace
 }
 
 // GetEnvironment returns the global environment object. Because this
@@ -62,6 +62,7 @@ type envState struct {
 	queue      amboy.Queue
 	session    *mgo.Session
 	metadataNS Namespace
+	deps       DependencyNetworker
 	migrations map[string]ManualMigrationOperation
 	processor  map[string]DocumentProcessor
 	isSetup    bool
@@ -85,11 +86,17 @@ func (e *envState) Setup(q amboy.Queue, mongodbURI string) error {
 		return errors.New("configuring anser environment with a non-running queue")
 	}
 
+	dbName := session.DB()
+	if dbName == "test" {
+		dbName = defaultAnserDB
+	}
+
 	e.queue = q
 	e.session = session
 	e.metadataNS.Collection = defaultMetadataCollection
-	e.metadataNS.DB = defaultAnserDB
+	e.metadataNS.DB = dbName
 	e.isSetup = true
+	e.deps = NewDependencyNetwork()
 
 	return nil
 }
@@ -114,6 +121,17 @@ func (e *envState) GetQueue() (amboy.Queue, error) {
 	}
 
 	return e.queue, nil
+}
+
+func (e *envState) GetDependencyNetwork() (DependencyNetworker, err) {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	if e.deps == nil {
+		return nil, errors.New("no dependency networker specified")
+	}
+
+	return e.deps, nil
 }
 
 func (e *envState) RegisterManualMigrationOperation(name string, op ManualMigrationOperation) error {
@@ -154,18 +172,6 @@ func (e *envState) GetDocumentProcessor(name string) (DocumentProcessor, bool) {
 
 	docp, ok := e.processor[name]
 	return docp, ok
-}
-
-func (e *envState) SetMetadataNamespace(ns Namespace) error {
-	if !ns.IsValid() {
-		return errors.Errorf("namespace '%+v' is not valid", ns)
-	}
-
-	e.mu.Lock()
-	defer e.mu.Unlock()
-
-	e.metadataNS = ns
-	return nil
 }
 
 func (e *envState) MetadataNamespace() Namespace {

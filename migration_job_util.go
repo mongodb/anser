@@ -17,6 +17,7 @@ type MigrationMetadata struct {
 	Completed bool   `bson:"completed" json:"completed" yaml:"completed"`
 }
 
+// Satisfies reports if a migration has completed without errors.
 func (m *MigrationMetadata) Satisfied() bool { return m.Completed && !m.HasErrors }
 
 // MigrationHelper is an interface embedded in all jobs as an
@@ -30,10 +31,16 @@ type MigrationHelper interface {
 	Env() Environment
 	SetEnv(Environment) error
 
+	// Migrations need to record their state to help resolve
+	// dependencies to the database.
+	FinishMigration(string, *job.Base)
+	SaveMigrationEvent(*MigrationMetadata) error
+
+	// The migration helper provides a model/interface for
+	// interacting with the database to check the state of a
+	// migration operation, helpful in dependency approval.
 	PendingMigrationOperations(Namespace, map[string]interface{}) int
 	GetMigrationEvents(map[string]interface{}) (*mgo.Session, DocumentIterator, error)
-	SaveMigrationEvent(*MigrationMetadata) error
-	FinishMigration(string, *job.Base)
 }
 
 // NewMigrationHelper constructs a new migration helper instance. Use

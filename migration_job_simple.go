@@ -9,7 +9,8 @@ import (
 )
 
 func init() {
-	registry.AddJobType("simple-migration", func() amboy.Job { return makeSimpleMigration() })
+	registry.AddJobType("simple-migration",
+		func() amboy.Job { return makeSimpleMigration() })
 }
 
 func NewSimpleMigration(e Environment, m SimpleMigration) amboy.Job {
