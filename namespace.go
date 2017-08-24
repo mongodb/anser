@@ -1,10 +1,14 @@
 package anser
 
+import "fmt"
+
 // Namespace reflects a MongoDB database name and collection pair.
 type Namespace struct {
 	DB         string `bson:"db_name" json:"db_name" yaml:"db_name"`
 	Collection string `bson:"collection" json:"collection" yaml:"collection"`
 }
+
+func (ns Namespace) String() string { return fmt.Sprintf("%s.%s", ns.DB, ns.Collection) }
 
 // IsValid checks
 func (ns Namespace) IsValid() bool {

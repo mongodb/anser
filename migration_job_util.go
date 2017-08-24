@@ -6,6 +6,8 @@ import (
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	mgo "gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type MigrationMetadata struct {
@@ -28,6 +30,8 @@ type MigrationHelper interface {
 	Env() Environment
 	SetEnv(Environment) error
 
+	PendingMigrationOperations(Namespace, map[string]interface{}) int
+	GetMigrationEvents(map[string]interface{}) (*mgo.Session, DocumentIterator, error)
 	SaveMigrationEvent(*MigrationMetadata) error
 	FinishMigration(string, *job.Base)
 }
@@ -92,4 +96,38 @@ func (e *migrationBase) FinishMigration(name string, j *job.Base) {
 		j.AddError(err)
 		grip.Warningf("encountered problem [%s] saving migration metadata", err.Error())
 	}
+}
+
+func (e *migrationBase) PendingMigrationOperations(ns Namespace, q map[string]interface{}) int {
+	env := e.Env()
+
+	session, err := env.GetSession()
+	if err != nil {
+		grip.Error(errors.WithStack(err))
+		return -1
+	}
+	defer session.Close()
+
+	coll := session.DB(ns.DB).C(ns.Collection)
+
+	num, err := coll.Find(bson.M(q)).Count()
+	if err != nil {
+		grip.Warning(errors.WithStack(err))
+		return -1
+	}
+
+	return num
+}
+
+func (e *migrationBase) GetMigrationEvents(q map[string]interface{}) (*mgo.Session, DocumentIterator, error) {
+	env := e.Env()
+	ns := env.MetadataNamespace()
+
+	session, err := env.GetSession()
+	if err != nil {
+		return nil, nil, errors.WithStack(err)
+	}
+
+	iter := session.DB(ns.DB).C(ns.Collection).Find(bson.M(q)).Iter()
+	return session, iter, nil
 }
