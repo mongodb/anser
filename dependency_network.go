@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/mongodb/grip"
+	"github.com/tychoish/tarjan"
 )
 
 // DependencyNetworker provides answers to questions about the
@@ -20,10 +21,21 @@ type DependencyNetworker interface {
 	// to prevent cycles or broken dependencies.
 	Add(string, []string)
 
-	// Resolve, returns a
+	// Resolve, returns all of the dependencies for the specified task.
 	Resolve(string) []string
+
+	// All returns a list of all tasks that have registered
+	// dependencies.
 	All() []string
+
+	// Network returns the dependency graph for all registered
+	// tasks as a mapping of task IDs to the IDs of its
+	// dependencies.
 	Network() map[string][]string
+
+	// Validate returns errors if there are either dependencies
+	// specified that do not have tasks available *or* if there
+	// are dependency cycles.
 	Validate() error
 
 	// For introspection and convince, DependencyNetworker
@@ -76,11 +88,17 @@ func (n *dependencyNetwork) Resolve(name string) []string {
 	return out
 }
 
-func (n *dependencyNetwork) Network() map[string]string {
-	out := make(map[string][]string)
-
+func (n *dependencyNetwork) Network() map[string][]string {
 	n.mu.RLock()
 	defer n.mu.RUnlock()
+
+	return n.getNetworkUnsafe()
+}
+
+// this is implemented separately from network so we can use it in
+// validation and have a sane locking strategy.
+func (n *dependencyNetwork) getNetworkUnsafe() map[string][]string {
+	out := make(map[string][]string)
 
 	for node, edges := range n.network {
 		deps := []string{}
@@ -96,7 +114,11 @@ func (n *dependencyNetwork) Validate() error {
 	dependencies := make(map[string]struct{})
 	catcher := grip.NewCatcher()
 
-	for _, edges := range n.network {
+	n.mu.RLock()
+	defer n.mu.RUnlock()
+
+	graph := n.getNetworkUnsafe()
+	for _, edges := range graph {
 		for id := range edges {
 			dependencies[id] = struct{}{}
 		}
@@ -108,7 +130,11 @@ func (n *dependencyNetwork) Validate() error {
 		}
 	}
 
-	// TODO(1): ensure that there are no cycles
+	for _, group := range tarjan.Connections(graph) {
+		if len(group) > 1 {
+			catcher.Add(fmt.Errorf("cycle detected between nodes: %v", group))
+		}
+	}
 
 	return catcher.Resolve()
 }
