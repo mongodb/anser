@@ -27,7 +27,7 @@ type MigrationGenerator interface {
 
 // AddMigrationJobs takes an amboy.Queue, processes the results, and
 // adds any jobs produced by the generator to the queue.
-func AddMigrationJobs(q amboy.Queue) (int, error) {
+func AddMigrationJobs(q amboy.Queue, dryRun bool) (int, error) {
 	catcher := grip.NewCatcher()
 	count := 0
 	for job := range q.Results() {
@@ -38,7 +38,9 @@ func AddMigrationJobs(q amboy.Queue) (int, error) {
 		grip.Infof("adding operations for %s", generator.ID())
 
 		for j := range generator.Jobs() {
-			catcher.Add(q.Put(j))
+			if dryRun {
+				catcher.Add(q.Put(j))
+			}
 		}
 
 		count++
@@ -64,9 +66,13 @@ func generator(env Environment, groupID string, migrations ...amboy.Job) (<-chan
 
 	for _, migration := range migrations {
 		dep := migration.Dependency()
-		for _, edge := range network.GetGroup(groupID) {
-			grip.CatchNotice(dep.AddEdge(edge))
+
+		for _, group := range network.Resolve(groupID) {
+			for _, edge := range network.GetGroup(group) {
+				grip.CatchNotice(dep.AddEdge(edge))
+			}
 		}
+
 		migration.SetDependency(dep)
 
 		out <- migration
