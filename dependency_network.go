@@ -3,6 +3,7 @@ package anser
 import (
 	"fmt"
 	"json"
+	"strings"
 	"sync"
 
 	"github.com/mongodb/grip"
@@ -38,6 +39,12 @@ type DependencyNetworker interface {
 	// are dependency cycles.
 	Validate() error
 
+	// AddGroup and GetGroup set and return the lists of tasks
+	// that beloing to a specific task group. Unlike the specific
+	// task dependency setters.
+	AddGroup(string, []string)
+	GetGroup(string) []string
+
 	// For introspection and convince, DependencyNetworker
 	// composes implementations of common interfaces.
 	fmt.Stringer
@@ -47,11 +54,13 @@ type DependencyNetworker interface {
 func NewDependencyNetwork() DependencyNetworker {
 	return &dependencyNetwork{
 		network: make(map[string]map[string]struct{}),
+		groups:  make(map[string]map[string]struct{}),
 	}
 }
 
 type dependencyNetwork struct {
 	network map[string]map[string]struct{}
+	group   map[string]map[string]struct{}
 	mu      sync.RWMutex
 }
 
@@ -132,11 +141,45 @@ func (n *dependencyNetwork) Validate() error {
 
 	for _, group := range tarjan.Connections(graph) {
 		if len(group) > 1 {
-			catcher.Add(fmt.Errorf("cycle detected between nodes: %v", group))
+			catcher.Add(fmt.Errorf("cycle detected between nodes: [%s]",
+				strings.Join(group, ", ")))
 		}
 	}
 
 	return catcher.Resolve()
+}
+
+func (n *dependencyNetwork) AddGroup(name string, group []string) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+
+	groupSet, ok := n.group[name]
+	if !ok {
+		groupSet = make(map[string]struct{})
+		n.group[name] = groupSet
+	}
+
+	for _, g := range group {
+		groupSet[g] = struct{}{}
+	}
+}
+
+func (n *dependencyNetwork) GetGroup(name string) []string {
+	out := []string{}
+
+	n.mu.RLock()
+	defer n.mu.RUnlock()
+
+	group, ok := n.group[name]
+	if !ok {
+		return out
+	}
+
+	for g := range group {
+		out = append(out, g)
+	}
+
+	return out
 }
 
 //////////////////////////////////////////
