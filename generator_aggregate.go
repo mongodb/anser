@@ -12,28 +12,28 @@ import (
 )
 
 func init() {
-	registry.AddJobType("simple-migration-generator",
-		func() amboy.Job { return makeSimpleGenerator() })
+	registry.AddJobType("aggregate-migration-generator",
+		func() amboy.Job { return makeAggregateGenerator() })
 }
 
 func NewSimpleMigrationGenerator(e Environment, ns Namespace,
-	query, update map[string]interface{}) amboy.Job {
+	query map[string]interface{}, opName string) amboy.Job {
 
-	j := makeSimpleGenerator()
+	j := makeAggregateGenerator()
 	j.MigrationHelper = MigrationHelper(e)
 	j.NS = ns
 	j.Query = query
-	j.Update = update
+	j.OperationName = opName
 
 	return j
 }
 
-func makeSimpleGenerator() *simpleMigrationGenerator {
-	return &simpleMigrationGenerator{
+func makeAggregateGenerator() *aggregateMigrationGenerator {
+	return &aggregateMigrationGenerator{
 		MigrationHelper: &migrationBase{},
 		Base: job.Base{
 			JobType: amboy.JobType{
-				Name:    "simple-migration-generator",
+				Name:    "aggregate-migration-generator",
 				Version: 0,
 				Format:  amboy.BSON,
 			},
@@ -41,17 +41,17 @@ func makeSimpleGenerator() *simpleMigrationGenerator {
 	}
 }
 
-type simpleMigrationGenerator struct {
-	NS              Namespace              `bson:"ns" json:"ns" yaml:"ns"`
-	Query           map[string]interface{} `bson:"source_query" json:"source_query" yaml:"source_query"`
-	Update          map[string]interface{} `bson:"update" json:"update" yaml:"update"`
-	Migrations      []*simpleMigrationJob  `bson:"migrations" json:"migrations" yaml:"migrations"`
+type aggregateMigrationGenerator struct {
+	NS              Namespace                `bson:"ns" json:"ns" yaml:"ns"`
+	Query           map[string]interface{}   `bson:"source_query" json:"source_query" yaml:"source_query"`
+	ProcessorName   string                   `bson:"processor_name" json:"processor_name" yaml:"processor_name"`
+	Migrations      []*aggregateMigrationJob `bson:"migrations" json:"migrations" yaml:"migrations"`
 	job.Base        `bson:"job_base" json:"job_base" yaml:"job_base"`
 	MigrationHelper `bson:"-" json:"-" yaml:"-"`
 	mu              sync.Mutex
 }
 
-func (j *simpleMigrationGenerator) Run() {
+func (j *aggregateMigrationGenerator) Run() {
 	defer j.MarkComplete()
 
 	env := j.Env()
@@ -80,12 +80,12 @@ func (j *simpleMigrationGenerator) Run() {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	for iter.Next(&doc) {
-		m := NewSimpleMigration(env, SimpleMigration{
-			ID:        doc.ID,
-			Update:    Update,
-			Migration: j.ID(),
-			Namespace: j.NS,
-		}).(*simpleMigrationJob)
+		m := NewAggregateMigration(env, AggregateMigration{
+			ID:            doc.ID,
+			ProcessorName: j.OperationName,
+			Migration:     j.ID(),
+			Namespace:     j.NS,
+		}).(*aggregateMigrationJob)
 
 		m.SetID(fmt.Sprintf("%s.%v.%d", j.ID(), doc.ID, len(ids)))
 		ids = append(ids, m.ID())
@@ -109,6 +109,6 @@ func (j *simpleMigrationGenerator) Jobs() <-chan amboy.Job {
 	out, err := generator(env, j.ID(), j.Migrations...)
 	grip.CatchError(err)
 	grip.Info("produced %d tasks for migration %s", len(j.Migrations), j.ID())
-	j.Migrations = []*simpleMigrationJob{}
+	j.Migrations = []*aggregateMigrationJob{}
 	return out
 }
