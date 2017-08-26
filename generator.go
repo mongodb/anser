@@ -2,7 +2,9 @@ package anser
 
 import (
 	"github.com/mongodb/amboy"
+	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 // MigrationGenerator is a amboy.Job super set used to store
@@ -25,6 +27,24 @@ type MigrationGenerator interface {
 	amboy.Job
 }
 
+// GeneratorOptions hold all options common to all generator types,
+// and are used in the configuration of generator functions and their
+// dependency relationships.
+type GeneratorOptions struct {
+	JobID     string
+	DependsOn []string
+	NS        Namespace
+	Query     map[string]interface{}
+}
+
+func (o GeneratorOptions) dependency() dependency.Manager {
+	dep := dependency.NewAlways()
+	for _, edge := range o.DependsOn {
+		dep.AddEdge(edge)
+	}
+	return dep
+}
+
 // AddMigrationJobs takes an amboy.Queue, processes the results, and
 // adds any jobs produced by the generator to the queue.
 func AddMigrationJobs(q amboy.Queue, dryRun bool) (int, error) {
@@ -39,14 +59,17 @@ func AddMigrationJobs(q amboy.Queue, dryRun bool) (int, error) {
 
 		for j := range generator.Jobs() {
 			if dryRun {
-				catcher.Add(q.Put(j))
+				grip.Infof("dry-run: would have added %s", j.ID())
+				continue
 			}
+
+			catcher.Add(q.Put(j))
 		}
 
 		count++
 	}
 
-	grip.Info("added %d migration operations", count)
+	grip.Infof("added %d migration operations", count)
 	return count, catcher.Resolve()
 }
 
@@ -55,28 +78,33 @@ func AddMigrationJobs(q amboy.Queue, dryRun bool) (int, error) {
 // takes a list of jobs (using a variadic function to do the type
 // conversion,) and returns them in a (buffered) channel. with the
 // jobs, having had their dependencies set.
-func generator(env Environment, groupID string, migrations ...amboy.Job) (<-chan amboy.Job, error) {
+func generator(env Environment, groupID string, input <-chan amboy.Job) (<-chan amboy.Job, error) {
+	out := make(chan amboy.Job)
+
 	network, err := env.GetDependencyNetwork()
+
 	if err != nil {
 		grip.Warning(err)
-		return
+		close(out)
+		return out, errors.WithStack(err)
 	}
 
-	out := make(chan amboy.Job, len(migrations))
+	go func() {
+		defer close(out)
+		for migration := range input {
+			dep := migration.Dependency()
 
-	for _, migration := range migrations {
-		dep := migration.Dependency()
-
-		for _, group := range network.Resolve(groupID) {
-			for _, edge := range network.GetGroup(group) {
-				grip.CatchNotice(dep.AddEdge(edge))
+			for _, group := range network.Resolve(groupID) {
+				for _, edge := range network.GetGroup(group) {
+					grip.CatchNotice(dep.AddEdge(edge))
+				}
 			}
+
+			migration.SetDependency(dep)
+
+			out <- migration
 		}
+	}()
 
-		migration.SetDependency(dep)
-
-		out <- migration
-	}
-
-	return out
+	return out, nil
 }

@@ -9,43 +9,50 @@ import (
 	"golang.org/x/net/context"
 )
 
-type MigrationDefinition struct {
-	Name      string
-	Job       amboy.Job
-	DependsOn []string
-}
-
+// MigrationApplication define the root level of a database
+// migration. Construct a migration application, pass in an
+// anser.Environment object to the Setup function to initialize the
+// application and then call Run to execute the application.
+//
+// See the MigrationDefinition documentation for more information on
+// defining new migrations. Anser migrations run in two phases, a
+// generation phase, which runs the jobs defined in the Generators
+// field, and then runs all migration operations.
+//
+// The ordering of migrations is determined by the dependencies: there
+// are dependencies between generator functions, and if a generator
+// function has dependencies, then the migrations it produces will
+// depend on all migrations produced by the generators dependencies.
+//
+// If the DryRun operation is set, then the application will run all
+// of the migration.
 type MigrationApplication struct {
-	Generators []MigrationDefinition
+	Generators []MigrationGenerator
 	DryRun     bool
 	env        Environment
-	hasSetup
+	hasSetup   bool
 }
 
+// Setup takes a configured anser.Environment implementation and
+// configures all generator.
+//
+// You can only run this function once; subsequent attempts return an
+// error but are a noop otherwise.
 func (a *MigrationApplication) Setup(e Environment) error {
 	if !a.hasSetup {
 		return errors.New("cannot setup an application more than once")
 	}
 
 	a.env = e
-	deps, err := e.GetDependencyNetwork()
+	network, err := e.GetDependencyNetwork()
 	if err != nil {
-		return errors.Wrap(err, "problem getting dependency")
+		return errors.Wrap(err, "problem getting dependency tracker")
 	}
 
-	catcher := grip.NewCatcher()
 	for _, gen := range a.Generators {
-		deps.Add(gen.Name, gen.DependsOn)
-
-		jobDeps := gen.Job.Dependency()
-		for _, edge := range gen.DependsOn {
-			catcher.Add(jobDeps.AddEdge(edge))
-		}
+		network.Add(gen.ID(), gen.Dependency().Edges())
 	}
 
-	if catcher.HasErrors() {
-		return errors.WithStack(catcher.Resolve())
-	}
 	a.hasSetup = true
 	return nil
 }
@@ -59,9 +66,10 @@ func (a *MigrationApplication) Run(ctx context.Context) error {
 	catcher := grip.NewCatcher()
 	// iterate through generators
 	for _, generator := range a.Generators {
-		catcher.Add(queue.Put(generator.Job))
+		catcher.Add(queue.Put(generator))
 	}
-	if catcher.HasErrors(err) {
+
+	if catcher.HasErrors() {
 		return errors.Wrap(catcher.Resolve(), "problem adding generation jobs")
 	}
 
@@ -76,12 +84,12 @@ func (a *MigrationApplication) Run(ctx context.Context) error {
 	}
 
 	if a.DryRun {
-		grip.Notice("ending dry run, generated %d jobs in %d migrations", numMigrations, len(a.Generators))
+		grip.Noticef("ending dry run, generated %d jobs in %d migrations", numMigrations, len(a.Generators))
 		return nil
 	}
 
 	grip.Infof("added %d migration jobs from %d migrations", numMigrations, len(a.Generators))
-	grip.Notice("waiting for %d migration jobs of %d migrations", numMigrations, len(a.Generators))
+	grip.Noticef("waiting for %d migration jobs of %d migrations", numMigrations, len(a.Generators))
 	amboy.WaitCtxInterval(ctx, queue, time.Second)
 	if ctx.Err() != nil {
 		return errors.New("migration operation canceled")

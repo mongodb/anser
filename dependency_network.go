@@ -1,8 +1,8 @@
 package anser
 
 import (
+	"encoding/json"
 	"fmt"
-	"json"
 	"strings"
 	"sync"
 
@@ -54,7 +54,7 @@ type DependencyNetworker interface {
 func NewDependencyNetwork() DependencyNetworker {
 	return &dependencyNetwork{
 		network: make(map[string]map[string]struct{}),
-		groups:  make(map[string]map[string]struct{}),
+		group:   make(map[string]map[string]struct{}),
 	}
 }
 
@@ -97,6 +97,18 @@ func (n *dependencyNetwork) Resolve(name string) []string {
 	return out
 }
 
+func (n *dependencyNetwork) All() []string {
+	out := []string{}
+
+	n.mu.RLock()
+	defer n.mu.RUnlock()
+	for name := range n.network {
+		out = append(out, name)
+	}
+
+	return out
+}
+
 func (n *dependencyNetwork) Network() map[string][]string {
 	n.mu.RLock()
 	defer n.mu.RUnlock()
@@ -128,13 +140,13 @@ func (n *dependencyNetwork) Validate() error {
 
 	graph := n.getNetworkUnsafe()
 	for _, edges := range graph {
-		for id := range edges {
+		for _, id := range edges {
 			dependencies[id] = struct{}{}
 		}
 	}
 
 	for id := range dependencies {
-		if _, ok := n.network; !ok {
+		if _, ok := n.network[id]; !ok {
 			catcher.Add(fmt.Errorf("dependency %s is not defined", id))
 		}
 	}

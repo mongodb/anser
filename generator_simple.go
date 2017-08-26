@@ -16,13 +16,13 @@ func init() {
 		func() amboy.Job { return makeSimpleGenerator() })
 }
 
-func NewSimpleMigrationGenerator(e Environment, ns Namespace,
-	query, update map[string]interface{}) amboy.Job {
-
+func NewSimpleMigrationGenerator(e Environment, opts GeneratorOptions, update map[string]interface{}) MigrationGenerator {
 	j := makeSimpleGenerator()
-	j.MigrationHelper = MigrationHelper(e)
-	j.NS = ns
-	j.Query = query
+	j.SetDependency(opts.dependency())
+	j.SetID(opts.JobID)
+	j.MigrationHelper = NewMigrationHelper(e)
+	j.NS = opts.NS
+	j.Query = opts.Query
 	j.Update = update
 
 	return j
@@ -62,14 +62,14 @@ func (j *simpleMigrationGenerator) Run() {
 		return
 	}
 
-	session, err := j.GetSession()
+	session, err := env.GetSession()
 	if err != nil {
 		j.AddError(err)
 		return
 	}
 	defer session.Close()
 
-	coll := session.DB(NS.DB).C(NS.Collection)
+	coll := session.DB(j.NS.DB).C(j.NS.Collection)
 	iter := coll.Find(j.Query).Select(bson.M{"_id": 1}).Iter()
 
 	doc := struct {
@@ -82,11 +82,18 @@ func (j *simpleMigrationGenerator) Run() {
 	for iter.Next(&doc) {
 		m := NewSimpleMigration(env, SimpleMigration{
 			ID:        doc.ID,
-			Update:    Update,
+			Update:    j.Update,
 			Migration: j.ID(),
 			Namespace: j.NS,
 		}).(*simpleMigrationJob)
+		dep, err := NewMigrationDependencyManager(env, j.ID(), j.Query, j.NS)
+		if err != nil {
+			j.AddError(err)
+			grip.Warning(err)
+			continue
+		}
 
+		m.SetDependency(dep)
 		m.SetID(fmt.Sprintf("%s.%v.%d", j.ID(), doc.ID, len(ids)))
 		ids = append(ids, m.ID())
 		j.Migrations = append(j.Migrations, m)
@@ -106,9 +113,15 @@ func (j *simpleMigrationGenerator) Jobs() <-chan amboy.Job {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 
-	out, err := generator(env, j.ID(), j.Migrations...)
+	jobs := make(chan amboy.Job, len(j.Migrations))
+	for _, job := range j.Migrations {
+		jobs <- job
+	}
+	close(jobs)
+
+	out, err := generator(env, j.ID(), jobs)
 	grip.CatchError(err)
-	grip.Info("produced %d tasks for migration %s", len(j.Migrations), j.ID())
+	grip.Infof("produced %d tasks for migration %s", len(j.Migrations), j.ID())
 	j.Migrations = []*simpleMigrationJob{}
 	return out
 }

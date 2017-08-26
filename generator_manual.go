@@ -16,13 +16,13 @@ func init() {
 		func() amboy.Job { return makeManualGenerator() })
 }
 
-func NewSimpleMigrationGenerator(e Environment, ns Namespace,
-	query map[string]interface{}, opName string) amboy.Job {
-
+func NewManualMigrationGenerator(e Environment, opts GeneratorOptions, opName string) MigrationGenerator {
 	j := makeManualGenerator()
-	j.MigrationHelper = MigrationHelper(e)
-	j.NS = ns
-	j.Query = query
+	j.SetDependency(opts.dependency())
+	j.SetID(opts.JobID)
+	j.MigrationHelper = NewMigrationHelper(e)
+	j.NS = opts.NS
+	j.Query = opts.Query
 	j.OperationName = opName
 
 	return j
@@ -62,14 +62,14 @@ func (j *manualMigrationGenerator) Run() {
 		return
 	}
 
-	session, err := j.GetSession()
+	session, err := env.GetSession()
 	if err != nil {
 		j.AddError(err)
 		return
 	}
 	defer session.Close()
 
-	coll := session.DB(NS.DB).C(NS.Collection)
+	coll := session.DB(j.NS.DB).C(j.NS.Collection)
 	iter := coll.Find(j.Query).Select(bson.M{"_id": 1}).Iter()
 
 	doc := struct {
@@ -86,7 +86,14 @@ func (j *manualMigrationGenerator) Run() {
 			Migration:     j.ID(),
 			Namespace:     j.NS,
 		}).(*manualMigrationJob)
+		dep, err := NewMigrationDependencyManager(env, j.ID(), j.Query, j.NS)
+		if err != nil {
+			j.AddError(err)
+			grip.Warning(err)
+			continue
+		}
 
+		m.SetDependency(dep)
 		m.SetID(fmt.Sprintf("%s.%v.%d", j.ID(), doc.ID, len(ids)))
 		ids = append(ids, m.ID())
 		j.Migrations = append(j.Migrations, m)
@@ -100,15 +107,21 @@ func (j *manualMigrationGenerator) Run() {
 	}
 }
 
-func (j *simpleMigrationGenerator) Jobs() <-chan amboy.Job {
+func (j *manualMigrationGenerator) Jobs() <-chan amboy.Job {
 	env := j.Env()
 
 	j.mu.Lock()
 	defer j.mu.Unlock()
 
-	out, err := generator(env, j.ID(), j.Migrations...)
+	jobs := make(chan amboy.Job, len(j.Migrations))
+	for _, job := range j.Migrations {
+		jobs <- job
+	}
+	close(jobs)
+
+	out, err := generator(env, j.ID(), jobs)
 	grip.CatchError(err)
-	grip.Info("produced %d tasks for migration %s", len(j.Migrations), j.ID())
+	grip.Infof("produced %d tasks for migration %s", len(j.Migrations), j.ID())
 	j.Migrations = []*manualMigrationJob{}
 	return out
 }

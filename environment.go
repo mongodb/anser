@@ -86,15 +86,13 @@ func (e *envState) Setup(q amboy.Queue, mongodbURI string) error {
 		return errors.New("configuring anser environment with a non-running queue")
 	}
 
-	dbName := session.DB()
-	if dbName == "test" {
-		dbName = defaultAnserDB
+	if session.DB("").Name != "test" {
+		e.metadataNS.DB = defaultAnserDB
 	}
 
 	e.queue = q
 	e.session = session
 	e.metadataNS.Collection = defaultMetadataCollection
-	e.metadataNS.DB = dbName
 	e.isSetup = true
 	e.deps = NewDependencyNetwork()
 
@@ -123,7 +121,7 @@ func (e *envState) GetQueue() (amboy.Queue, error) {
 	return e.queue, nil
 }
 
-func (e *envState) GetDependencyNetwork() (DependencyNetworker, err) {
+func (e *envState) GetDependencyNetwork() (DependencyNetworker, error) {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
