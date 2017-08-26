@@ -11,16 +11,6 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-type MigrationMetadata struct {
-	ID        string `bson:"_id" json:"id" yaml:"id"`
-	Migration string `bson:"migration" json:"migration" yaml:"migration"`
-	HasErrors bool   `bson:"has_errors" json:"has_errors" yaml:"has_errors"`
-	Completed bool   `bson:"completed" json:"completed" yaml:"completed"`
-}
-
-// Satisfies reports if a migration has completed without errors.
-func (m *MigrationMetadata) Satisfied() bool { return m.Completed && !m.HasErrors }
-
 // MigrationHelper is an interface embedded in all jobs as an
 // "extended base" for migrations ontop for common functionality of
 // the existing amboy.Base type which implements most job
@@ -35,7 +25,7 @@ type MigrationHelper interface {
 	// Migrations need to record their state to help resolve
 	// dependencies to the database.
 	FinishMigration(string, *job.Base)
-	SaveMigrationEvent(*MigrationMetadata) error
+	SaveMigrationEvent(*model.MigrationMetadata) error
 
 	// The migration helper provides a model/interface for
 	// interacting with the database to check the state of a
@@ -76,7 +66,7 @@ func (e *migrationBase) SetEnv(en Environment) error {
 	return nil
 }
 
-func (e *migrationBase) SaveMigrationEvent(m *MigrationMetadata) error {
+func (e *migrationBase) SaveMigrationEvent(m *model.MigrationMetadata) error {
 	env := e.Env()
 
 	session, err := env.GetSession()
@@ -93,7 +83,7 @@ func (e *migrationBase) SaveMigrationEvent(m *MigrationMetadata) error {
 
 func (e *migrationBase) FinishMigration(name string, j *job.Base) {
 	j.MarkComplete()
-	meta := MigrationMetadata{
+	meta := model.MigrationMetadata{
 		ID:        j.ID(),
 		Migration: name,
 		HasErrors: j.HasErrors(),
