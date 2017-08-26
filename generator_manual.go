@@ -8,6 +8,7 @@ import (
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
+	"github.com/tychoish/anser/model"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -16,7 +17,7 @@ func init() {
 		func() amboy.Job { return makeManualGenerator() })
 }
 
-func NewManualMigrationGenerator(e Environment, opts GeneratorOptions, opName string) MigrationGenerator {
+func NewManualMigrationGenerator(e Environment, opts GeneratorOptions, opName string) Generator {
 	j := makeManualGenerator()
 	j.SetDependency(opts.dependency())
 	j.SetID(opts.JobID)
@@ -42,7 +43,7 @@ func makeManualGenerator() *manualMigrationGenerator {
 }
 
 type manualMigrationGenerator struct {
-	NS              Namespace              `bson:"ns" json:"ns" yaml:"ns"`
+	NS              model.Namespace        `bson:"ns" json:"ns" yaml:"ns"`
 	Query           map[string]interface{} `bson:"source_query" json:"source_query" yaml:"source_query"`
 	OperationName   string                 `bson:"op_name" json:"op_name" yaml:"op_name"`
 	Migrations      []*manualMigrationJob  `bson:"migrations" json:"migrations" yaml:"migrations"`
@@ -80,13 +81,13 @@ func (j *manualMigrationGenerator) Run() {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	for iter.Next(&doc) {
-		m := NewManualMigration(env, ManualMigration{
+		m := NewManualMigration(env, model.Manual{
 			ID:            doc.ID,
 			OperationName: j.OperationName,
 			Migration:     j.ID(),
 			Namespace:     j.NS,
 		}).(*manualMigrationJob)
-		dep, err := NewMigrationDependencyManager(env, j.ID(), j.Query, j.NS)
+		dep, err := env.NewDependencyManager(j.ID(), j.Query, j.NS)
 		if err != nil {
 			j.AddError(err)
 			grip.Warning(err)

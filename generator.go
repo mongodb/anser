@@ -1,3 +1,14 @@
+/*
+Generator
+
+Generators create migration operations and are the first step
+in an anser Migration. They are supersets of amboy.Job interfaces.
+
+The current limitation is that the generated jobs must be stored
+within the implementation of the generator job, which means they must
+either all fit in memory *or* be serializeable independently (e.g. fit
+in the 16mb document limit if using a MongoDB backed queue.)
+*/
 package anser
 
 import (
@@ -5,25 +16,21 @@ import (
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"github.com/tychoish/anser/model"
 )
 
-// MigrationGenerator is a amboy.Job super set used to store
-// implementations that generate migration jobs. Internally they
-// create large jobs.
-//
-// The current limitation is that the generated jobs are stored within
-// the generator job, which means they must either all fit in memory
-// *or* be serializeable independently (e.g. fit in the 16mb document
-// limit if using a MongoDB backed query.)
+// Generator is a amboy.Job super set used to store
+// implementations that generate other jobs jobs. Internally they
+// construct and store member jobs.
 //
 // Indeed this interface may be useful at some point for any kind of
 // job generating operation.
-type MigrationGenerator interface {
+type Generator interface {
 	// Jobs produces job objects for the results of the
 	// generator.
 	Jobs() <-chan amboy.Job
 
-	// MigrationGenerators are themselves amboy.Jobs.
+	// Generators are themselves amboy.Jobs.
 	amboy.Job
 }
 
@@ -33,11 +40,13 @@ type MigrationGenerator interface {
 type GeneratorOptions struct {
 	JobID     string
 	DependsOn []string
-	NS        Namespace
+	NS        model.Namespace
 	Query     map[string]interface{}
 }
 
 func (o GeneratorOptions) dependency() dependency.Manager {
+	// it might be worth considering using some other kind of
+	// dependency.Manager implementation.
 	dep := dependency.NewAlways()
 	for _, edge := range o.DependsOn {
 		dep.AddEdge(edge)
@@ -45,13 +54,13 @@ func (o GeneratorOptions) dependency() dependency.Manager {
 	return dep
 }
 
-// AddMigrationJobs takes an amboy.Queue, processes the results, and
+// addMigrationJobs takes an amboy.Queue, processes the results, and
 // adds any jobs produced by the generator to the queue.
-func AddMigrationJobs(q amboy.Queue, dryRun bool) (int, error) {
+func addMigrationJobs(q amboy.Queue, dryRun bool) (int, error) {
 	catcher := grip.NewCatcher()
 	count := 0
 	for job := range q.Results() {
-		generator, ok := job.(MigrationGenerator)
+		generator, ok := job.(Generator)
 		if !ok {
 			continue
 		}
@@ -74,7 +83,7 @@ func AddMigrationJobs(q amboy.Queue, dryRun bool) (int, error) {
 }
 
 // generator provides the high level implementation of the Jobs()
-// method that's a part of the MigrationGenerator interface. This
+// method that's a part of the Generator interface. This
 // takes a list of jobs (using a variadic function to do the type
 // conversion,) and returns them in a (buffered) channel. with the
 // jobs, having had their dependencies set.

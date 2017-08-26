@@ -5,25 +5,26 @@ import (
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/pkg/errors"
+	"github.com/tychoish/anser/model"
 )
 
 func init() {
-	registry.AddJobType("aggregate-migration", func() amboy.Job { return makeAggregateProducer() })
+	registry.AddJobType("stream-migration", func() amboy.Job { return makeStreamProducer() })
 }
 
-func NewAggregateMigration(e Environment, m AggregateProducer) amboy.Job {
-	j := makeAggregateProducer()
+func NewStreamMigration(e Environment, m model.Stream) Migration {
+	j := makeStreamProducer()
 	j.Definition = m
 	j.MigrationHelper = NewMigrationHelper(e)
 	return j
 }
 
-func makeAggregateProducer() *aggregateMigrationJob {
-	return &aggregateMigrationJob{
+func makeStreamProducer() *streamMigrationJob {
+	return &streamMigrationJob{
 		MigrationHelper: &migrationBase{},
 		Base: job.Base{
 			JobType: amboy.JobType{
-				Name:    "aggregate-migration",
+				Name:    "stream-migration",
 				Version: 0,
 				Format:  amboy.BSON,
 			},
@@ -31,13 +32,13 @@ func makeAggregateProducer() *aggregateMigrationJob {
 	}
 }
 
-type aggregateMigrationJob struct {
-	Definition      AggregateProducer `bson:"migration" json:"migration" yaml:"migration"`
+type streamMigrationJob struct {
+	Definition      model.Stream `bson:"migration" json:"migration" yaml:"migration"`
 	job.Base        `bson:"job_base" json:"job_base" yaml:"job_base"`
 	MigrationHelper `bson:"-" json:"-" yaml:"-"`
 }
 
-func (j *aggregateMigrationJob) Run() {
+func (j *streamMigrationJob) Run() {
 	defer j.FinishMigration(j.Definition.Migration, &j.Base)
 
 	env := j.Env()

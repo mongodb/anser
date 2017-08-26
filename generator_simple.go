@@ -8,6 +8,7 @@ import (
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
+	"github.com/tychoish/anser/model"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -16,7 +17,7 @@ func init() {
 		func() amboy.Job { return makeSimpleGenerator() })
 }
 
-func NewSimpleMigrationGenerator(e Environment, opts GeneratorOptions, update map[string]interface{}) MigrationGenerator {
+func NewSimpleMigrationGenerator(e Environment, opts GeneratorOptions, update map[string]interface{}) Generator {
 	j := makeSimpleGenerator()
 	j.SetDependency(opts.dependency())
 	j.SetID(opts.JobID)
@@ -42,7 +43,7 @@ func makeSimpleGenerator() *simpleMigrationGenerator {
 }
 
 type simpleMigrationGenerator struct {
-	NS              Namespace              `bson:"ns" json:"ns" yaml:"ns"`
+	NS              model.Namespace        `bson:"ns" json:"ns" yaml:"ns"`
 	Query           map[string]interface{} `bson:"source_query" json:"source_query" yaml:"source_query"`
 	Update          map[string]interface{} `bson:"update" json:"update" yaml:"update"`
 	Migrations      []*simpleMigrationJob  `bson:"migrations" json:"migrations" yaml:"migrations"`
@@ -80,13 +81,13 @@ func (j *simpleMigrationGenerator) Run() {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	for iter.Next(&doc) {
-		m := NewSimpleMigration(env, SimpleMigration{
+		m := NewSimpleMigration(env, model.Simple{
 			ID:        doc.ID,
 			Update:    j.Update,
 			Migration: j.ID(),
 			Namespace: j.NS,
 		}).(*simpleMigrationJob)
-		dep, err := NewMigrationDependencyManager(env, j.ID(), j.Query, j.NS)
+		dep, err := env.NewDependencyManager(j.ID(), j.Query, j.NS)
 		if err != nil {
 			j.AddError(err)
 			grip.Warning(err)

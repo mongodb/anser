@@ -6,6 +6,7 @@ import (
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"github.com/tychoish/anser/model"
 	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -39,7 +40,7 @@ type MigrationHelper interface {
 	// The migration helper provides a model/interface for
 	// interacting with the database to check the state of a
 	// migration operation, helpful in dependency approval.
-	PendingMigrationOperations(Namespace, map[string]interface{}) int
+	PendingMigrationOperations(model.Namespace, map[string]interface{}) int
 	GetMigrationEvents(map[string]interface{}) (*mgo.Session, DocumentIterator, error)
 }
 
@@ -105,7 +106,7 @@ func (e *migrationBase) FinishMigration(name string, j *job.Base) {
 	}
 }
 
-func (e *migrationBase) PendingMigrationOperations(ns Namespace, q map[string]interface{}) int {
+func (e *migrationBase) PendingMigrationOperations(ns model.Namespace, q map[string]interface{}) int {
 	env := e.Env()
 
 	session, err := env.GetSession()

@@ -1,3 +1,22 @@
+/*
+Package anser provides document transformation and processing tool to
+support data migrations.
+
+Application
+
+The anser.Application is the primary interface in which migrations are
+defined and executed. Applications are constructed with a list of
+MigraionGenerators, and relevant operations. Then the Setup method
+configures the application, with an anser.Environment, which sets up
+and collets dependency information. Finally, the Run method executes
+the migrations in two phases: first my generating migration jobs, and
+finally by running all migration jobs.
+
+The ordering of migrations is derived from the dependency information
+between generators and the jobs that they generate. When possible jobs
+are executed in parallel, but the execution of migration operations is
+a proparety of the queue object configured in the anser.Environment.
+*/
 package anser
 
 import (
@@ -9,15 +28,14 @@ import (
 	"golang.org/x/net/context"
 )
 
-// MigrationApplication define the root level of a database
+// Application define the root level of a database
 // migration. Construct a migration application, pass in an
 // anser.Environment object to the Setup function to initialize the
 // application and then call Run to execute the application.
 //
-// See the MigrationDefinition documentation for more information on
-// defining new migrations. Anser migrations run in two phases, a
-// generation phase, which runs the jobs defined in the Generators
-// field, and then runs all migration operations.
+// Anser migrations run in two phases, a generation phase, which runs
+// the jobs defined in the Generators field, and then runs all
+// migration operations.
 //
 // The ordering of migrations is determined by the dependencies: there
 // are dependencies between generator functions, and if a generator
@@ -26,8 +44,8 @@ import (
 //
 // If the DryRun operation is set, then the application will run all
 // of the migration.
-type MigrationApplication struct {
-	Generators []MigrationGenerator
+type Application struct {
+	Generators []Generator
 	DryRun     bool
 	env        Environment
 	hasSetup   bool
@@ -38,7 +56,7 @@ type MigrationApplication struct {
 //
 // You can only run this function once; subsequent attempts return an
 // error but are a noop otherwise.
-func (a *MigrationApplication) Setup(e Environment) error {
+func (a *Application) Setup(e Environment) error {
 	if !a.hasSetup {
 		return errors.New("cannot setup an application more than once")
 	}
@@ -57,7 +75,7 @@ func (a *MigrationApplication) Setup(e Environment) error {
 	return nil
 }
 
-func (a *MigrationApplication) Run(ctx context.Context) error {
+func (a *Application) Run(ctx context.Context) error {
 	queue, err := a.env.GetQueue()
 	if err != nil {
 		return errors.Wrap(err, "problem getting queue")
@@ -78,7 +96,7 @@ func (a *MigrationApplication) Run(ctx context.Context) error {
 		return errors.New("migration operation canceled")
 	}
 
-	numMigrations, err := AddMigrationJobs(queue, a.DryRun)
+	numMigrations, err := addMigrationJobs(queue, a.DryRun)
 	if err != nil {
 		return errors.New("problem adding generated migration jobs")
 	}

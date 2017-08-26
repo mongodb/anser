@@ -1,4 +1,4 @@
-package anser
+package model
 
 import "fmt"
 

@@ -16,7 +16,9 @@ import (
 	"sync"
 
 	"github.com/mongodb/amboy"
+	"github.com/mongodb/amboy/dependency"
 	"github.com/pkg/errors"
+	"github.com/tychoish/anser/model"
 	mgo "gopkg.in/mgo.v2"
 )
 
@@ -46,11 +48,12 @@ type Environment interface {
 	GetSession() (*mgo.Session, error)
 	GetQueue() (amboy.Queue, error)
 	GetDependencyNetwork() (DependencyNetworker, error)
-	MetadataNamespace() Namespace
+	MetadataNamespace() model.Namespace
 	RegisterManualMigrationOperation(string, ManualMigrationOperation) error
 	GetManualMigrationOperation(string) (ManualMigrationOperation, bool)
 	RegisterDocumentProcessor(string, DocumentProcessor) error
 	GetDocumentProcessor(string) (DocumentProcessor, bool)
+	NewDependencyManager(string, map[string]interface{}, model.Namespace) (dependency.Manager, error)
 }
 
 // GetEnvironment returns the global environment object. Because this
@@ -61,7 +64,7 @@ func GetEnvironment() Environment { return globalEnv }
 type envState struct {
 	queue      amboy.Queue
 	session    *mgo.Session
-	metadataNS Namespace
+	metadataNS model.Namespace
 	deps       DependencyNetworker
 	migrations map[string]ManualMigrationOperation
 	processor  map[string]DocumentProcessor
@@ -172,9 +175,23 @@ func (e *envState) GetDocumentProcessor(name string) (DocumentProcessor, bool) {
 	return docp, ok
 }
 
-func (e *envState) MetadataNamespace() Namespace {
+func (e *envState) MetadataNamespace() model.Namespace {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
 	return e.metadataNS
+}
+
+func (e *envState) NewDependencyManager(migrationID string, query map[string]interface{}, ns model.Namespace) (dependency.Manager, error) {
+	d := makeMigrationDependencyManager()
+
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	if err := d.SetEnv(e); err != nil {
+		return nil, errors.Wrap(err, "problem with environment")
+	}
+	d.Query = query
+	d.MigrationID = migrationID
+
+	return d, nil
 }

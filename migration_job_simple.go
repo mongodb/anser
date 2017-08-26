@@ -5,6 +5,7 @@ import (
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/pkg/errors"
+	"github.com/tychoish/anser/model"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -13,7 +14,7 @@ func init() {
 		func() amboy.Job { return makeSimpleMigration() })
 }
 
-func NewSimpleMigration(e Environment, m SimpleMigration) amboy.Job {
+func NewSimpleMigration(e Environment, m model.Simple) Migration {
 	j := makeSimpleMigration()
 	j.Definition = m
 	j.MigrationHelper = NewMigrationHelper(e)
@@ -34,7 +35,7 @@ func makeSimpleMigration() *simpleMigrationJob {
 }
 
 type simpleMigrationJob struct {
-	Definition      SimpleMigration `bson:"migration" json:"migration" yaml:"migration"`
+	Definition      model.Simple `bson:"migration" json:"migration" yaml:"migration"`
 	job.Base        `bson:"job_base" json:"job_base" yaml:"job_base"`
 	MigrationHelper `bson:"-" json:"-" yaml:"-"`
 }

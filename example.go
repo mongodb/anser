@@ -1,6 +1,12 @@
 package anser
 
-import "time"
+import (
+	"time"
+
+	"github.com/mongodb/grip"
+	"github.com/tychoish/anser/model"
+	"golang.org/x/net/context"
+)
 
 ////////////////////////////////////////////////////////////////////////
 //
@@ -8,10 +14,12 @@ import "time"
 //
 func main() {
 	env := GetEnvironment()
-	ns := Namespace{DB: "mci", Collection: "test"}
+	ns := model.Namespace{DB: "mci", Collection: "test"}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	app := MigrationApplication{
-		Generators: []MigrationGenerator{
+	app := &Application{
+		Generators: []Generator{
 			NewSimpleMigrationGenerator(env,
 				GeneratorOptions{
 					JobID:     "first",
@@ -25,7 +33,7 @@ func main() {
 				map[string]interface{}{
 					"$rename": map[string]string{"time": "timeSince"},
 				}),
-			NewAggregateMigrationGenerator(env,
+			NewStreamMigrationGenerator(env,
 				GeneratorOptions{
 					JobID:     "second",
 					DependsOn: []string{"first"},
@@ -34,9 +42,11 @@ func main() {
 						"time": map[string]interface{}{"$gt": time.Now().Add(-time.Hour)},
 					},
 				},
+				// the name of a registered aggregate operation
 				"op-name"),
 		},
 	}
 
 	app.Setup(env)
+	grip.CatchEmergencyFatal(app.Run(ctx))
 }

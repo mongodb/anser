@@ -8,16 +8,17 @@ import (
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
+	"github.com/tychoish/anser/model"
 	"gopkg.in/mgo.v2/bson"
 )
 
 func init() {
-	registry.AddJobType("aggregate-migration-generator",
-		func() amboy.Job { return makeAggregateGenerator() })
+	registry.AddJobType("stream-migration-generator",
+		func() amboy.Job { return makeStreamGenerator() })
 }
 
-func NewAggregateMigrationGenerator(e Environment, opts GeneratorOptions, opName string) MigrationGenerator {
-	j := makeAggregateGenerator()
+func NewStreamMigrationGenerator(e Environment, opts GeneratorOptions, opName string) Generator {
+	j := makeStreamGenerator()
 	j.SetID(opts.JobID)
 	j.SetDependency(opts.dependency())
 	j.MigrationHelper = NewMigrationHelper(e)
@@ -28,12 +29,12 @@ func NewAggregateMigrationGenerator(e Environment, opts GeneratorOptions, opName
 	return j
 }
 
-func makeAggregateGenerator() *aggregateMigrationGenerator {
-	return &aggregateMigrationGenerator{
+func makeStreamGenerator() *streamMigrationGenerator {
+	return &streamMigrationGenerator{
 		MigrationHelper: &migrationBase{},
 		Base: job.Base{
 			JobType: amboy.JobType{
-				Name:    "aggregate-migration-generator",
+				Name:    "stream-migration-generator",
 				Version: 0,
 				Format:  amboy.BSON,
 			},
@@ -41,17 +42,17 @@ func makeAggregateGenerator() *aggregateMigrationGenerator {
 	}
 }
 
-type aggregateMigrationGenerator struct {
-	NS              Namespace                `bson:"ns" json:"ns" yaml:"ns"`
-	Query           map[string]interface{}   `bson:"source_query" json:"source_query" yaml:"source_query"`
-	ProcessorName   string                   `bson:"processor_name" json:"processor_name" yaml:"processor_name"`
-	Migrations      []*aggregateMigrationJob `bson:"migrations" json:"migrations" yaml:"migrations"`
+type streamMigrationGenerator struct {
+	NS              model.Namespace        `bson:"ns" json:"ns" yaml:"ns"`
+	Query           map[string]interface{} `bson:"source_query" json:"source_query" yaml:"source_query"`
+	ProcessorName   string                 `bson:"processor_name" json:"processor_name" yaml:"processor_name"`
+	Migrations      []*streamMigrationJob  `bson:"migrations" json:"migrations" yaml:"migrations"`
 	job.Base        `bson:"job_base" json:"job_base" yaml:"job_base"`
 	MigrationHelper `bson:"-" json:"-" yaml:"-"`
 	mu              sync.Mutex
 }
 
-func (j *aggregateMigrationGenerator) Run() {
+func (j *streamMigrationGenerator) Run() {
 	defer j.MarkComplete()
 
 	env := j.Env()
@@ -80,14 +81,14 @@ func (j *aggregateMigrationGenerator) Run() {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	for iter.Next(&doc) {
-		m := NewAggregateMigration(env, AggregateProducer{
+		m := NewStreamMigration(env, model.Stream{
 			// ID:            doc.ID,
 			ProcessorName: j.ProcessorName,
 			Migration:     j.ID(),
 			Namespace:     j.NS,
-		}).(*aggregateMigrationJob)
+		}).(*streamMigrationJob)
 
-		dep, err := NewMigrationDependencyManager(env, j.ID(), j.Query, j.NS)
+		dep, err := env.NewDependencyManager(j.ID(), j.Query, j.NS)
 		if err != nil {
 			j.AddError(err)
 			continue
@@ -106,7 +107,7 @@ func (j *aggregateMigrationGenerator) Run() {
 	}
 }
 
-func (j *aggregateMigrationGenerator) Jobs() <-chan amboy.Job {
+func (j *streamMigrationGenerator) Jobs() <-chan amboy.Job {
 	env := j.Env()
 
 	j.mu.Lock()
@@ -121,6 +122,6 @@ func (j *aggregateMigrationGenerator) Jobs() <-chan amboy.Job {
 	out, err := generator(env, j.ID(), jobs)
 	grip.CatchError(err)
 	grip.Infof("produced %d tasks for migration %s", len(j.Migrations), j.ID())
-	j.Migrations = []*aggregateMigrationJob{}
+	j.Migrations = []*streamMigrationJob{}
 	return out
 }

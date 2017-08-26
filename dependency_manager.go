@@ -1,10 +1,18 @@
+/*
+Dependency Manager
+
+The anser package provides a custom amboy/dependency.Manager object,
+which allows migrations to express dependencies to other
+migrations. The State() method ensures that all migration IDs
+specified as edges are satisfied before reporting as "ready" for work.
+*/
 package anser
 
 import (
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
-	"github.com/pkg/errors"
+	"github.com/tychoish/anser/model"
 	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -15,28 +23,10 @@ func init() {
 	})
 }
 
-// NewMigrationDependencyManager constructs a new
-// amboy/dependency.Manager object, which allows migrations to express
-// dependencies to other migrations. The State() method ensures that
-// all migration IDs specified as edges are satisfied before reporting
-// as "ready" for work.
-func NewMigrationDependencyManager(e Environment, migrationID string,
-	query map[string]interface{}, ns Namespace) (dependency.Manager, error) {
-
-	d := makeMigrationDependencyManager()
-	if err := d.SetEnv(e); err != nil {
-		return nil, errors.Wrap(err, "problem with environment")
-	}
-	d.Query = query
-	d.MigrationID = migrationID
-
-	return d, nil
-}
-
 type migrationDependency struct {
 	MigrationID string                 `bson:"migration" json:"migration" yaml:"migration"`
 	Query       map[string]interface{} `bson:"query" json:"query" yaml:"query"`
-	NS          Namespace              `bson:"namespace" json:"namespace" yaml:"namespace"`
+	NS          model.Namespace        `bson:"namespace" json:"namespace" yaml:"namespace"`
 	T           dependency.TypeInfo    `bson:"type" json:"type" yaml:"type"`
 
 	MigrationHelper `bson:"-" json:"-" yaml:"-"`
