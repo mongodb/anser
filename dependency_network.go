@@ -85,13 +85,13 @@ func (n *dependencyNetwork) Resolve(name string) []string {
 	n.mu.RLock()
 	defer n.mu.RUnlock()
 
-	edge, ok := n.network[name]
+	edges, ok := n.network[name]
 	if !ok {
 		return out
 	}
 
-	for n := range edge {
-		out = append(out, n)
+	for e := range edges {
+		out = append(out, e)
 	}
 
 	return out
