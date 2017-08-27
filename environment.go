@@ -19,6 +19,7 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/pkg/errors"
+	"github.com/tychoish/anser/db"
 	"github.com/tychoish/anser/model"
 	mgo "gopkg.in/mgo.v2"
 )
@@ -48,7 +49,7 @@ func init() {
 // reconfigurable after their initial configuration.
 type Environment interface {
 	Setup(amboy.Queue, string) error
-	GetSession() (*mgo.Session, error)
+	GetSession() (db.Session, error)
 	GetQueue() (amboy.Queue, error)
 	GetDependencyNetwork() (DependencyNetworker, error)
 	MetadataNamespace() model.Namespace
@@ -107,7 +108,7 @@ func (e *envState) Setup(q amboy.Queue, mongodbURI string) error {
 	return nil
 }
 
-func (e *envState) GetSession() (*mgo.Session, error) {
+func (e *envState) GetSession() (db.Session, error) {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
@@ -115,7 +116,7 @@ func (e *envState) GetSession() (*mgo.Session, error) {
 		return nil, errors.New("no session defined")
 	}
 
-	return e.session.Clone(), nil
+	return db.WrapSession(e.session.Clone()), nil
 }
 
 func (e *envState) GetQueue() (amboy.Queue, error) {

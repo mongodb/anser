@@ -38,7 +38,7 @@ package anser
 
 import (
 	"github.com/mongodb/amboy"
-	mgo "gopkg.in/mgo.v2"
+	"github.com/tychoish/anser/db"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -52,4 +52,4 @@ type Migration amboy.Job
 //
 // Implementors of ManualMigrationOperations are responsible for
 // implementating idempotent operations.
-type ManualMigrationOperation func(*mgo.Session, bson.Raw) error
+type ManualMigrationOperation func(db.Session, bson.Raw) error

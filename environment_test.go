@@ -9,8 +9,8 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	"github.com/tychoish/anser/db"
 	"golang.org/x/net/context"
-	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -112,7 +112,7 @@ func (s *EnvImplSuite) TestDepNetworkAccessor() {
 func (s *EnvImplSuite) TestManualMigrationOperationRegistry() {
 	count := 0
 
-	op := func(_ *mgo.Session, _ bson.Raw) error { count++; return nil }
+	op := func(_ db.Session, _ bson.Raw) error { count++; return nil }
 	s.Len(s.env.migrations, 0)
 	s.NoError(s.env.RegisterManualMigrationOperation("foo", op))
 	s.Len(s.env.migrations, 1)

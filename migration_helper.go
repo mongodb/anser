@@ -6,6 +6,7 @@ import (
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"github.com/tychoish/anser/db"
 	"github.com/tychoish/anser/model"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -29,7 +30,7 @@ type MigrationHelper interface {
 	// interacting with the database to check the state of a
 	// migration operation, helpful in dependency approval.
 	PendingMigrationOperations(model.Namespace, map[string]interface{}) int
-	GetMigrationEvents(map[string]interface{}) (DocumentIterator, error)
+	GetMigrationEvents(map[string]interface{}) (db.Iterator, error)
 }
 
 // NewMigrationHelper constructs a new migration helper instance. Use
@@ -103,7 +104,7 @@ func (e *migrationBase) PendingMigrationOperations(ns model.Namespace, q map[str
 	return num
 }
 
-func (e *migrationBase) GetMigrationEvents(q map[string]interface{}) (DocumentIterator, error) {
+func (e *migrationBase) GetMigrationEvents(q map[string]interface{}) (db.Iterator, error) {
 	env := e.Env()
 	ns := env.MetadataNamespace()
 
@@ -112,7 +113,7 @@ func (e *migrationBase) GetMigrationEvents(q map[string]interface{}) (DocumentIt
 		return nil, errors.WithStack(err)
 	}
 
-	iter := NewCombinedIterator(session, session.DB(ns.DB).C(ns.Collection).Find(bson.M(q)).Iter())
+	iter := db.NewCombinedIterator(session, session.DB(ns.DB).C(ns.Collection).Find(bson.M(q)).Iter())
 
 	return iter, nil
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
+	"github.com/tychoish/anser/db"
 	"github.com/tychoish/anser/model"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -72,7 +73,7 @@ func (d *migrationDependency) State() dependency.State {
 	return processEdges(len(edges), iter)
 }
 
-func processEdges(numEdges int, iter DocumentIterator) dependency.State {
+func processEdges(numEdges int, iter db.Iterator) dependency.State {
 	count := 0
 	meta := &model.MigrationMetadata{}
 	for iter.Next(meta) {
