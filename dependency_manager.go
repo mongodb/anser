@@ -13,7 +13,6 @@ import (
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/tychoish/anser/model"
-	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -64,19 +63,18 @@ func (d *migrationDependency) State() dependency.State {
 	// edges listed in the edges document are satisfied.
 
 	query := getDependencyStateQuery(edges)
-	session, iter, err := d.GetMigrationEvents(query)
+	iter, err := d.GetMigrationEvents(query)
 	if err != nil {
 		grip.Warning(err)
 		return dependency.Blocked
 	}
-	defer session.Close()
 
 	return processEdges(len(edges), iter)
 }
 
 func processEdges(numEdges int, iter DocumentIterator) dependency.State {
 	count := 0
-	meta := &MigrationMetadata{}
+	meta := &model.MigrationMetadata{}
 	for iter.Next(meta) {
 		// if any of the edges are *not* satisfied, then the
 		// dependency is by definition blocked
@@ -102,10 +100,6 @@ func processEdges(numEdges int, iter DocumentIterator) dependency.State {
 
 	// otherwise, the task is ready for work:
 	return dependency.Ready
-}
-
-func getDependencyEdgeIter(coll *mgo.Collection, query bson.M) DocumentIterator {
-	return coll.Find(query).Iter()
 }
 
 func getDependencyStateQuery(ids []string) bson.M {

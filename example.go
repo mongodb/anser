@@ -3,25 +3,44 @@ package anser
 import (
 	"time"
 
-	"github.com/mongodb/grip"
+	"github.com/mongodb/amboy/queue"
+	"github.com/mongodb/amboy/queue/driver"
 	"github.com/tychoish/anser/model"
 	"golang.org/x/net/context"
 )
 
-////////////////////////////////////////////////////////////////////////
-//
-// mostly as an example...
-//
-func main() {
+// proofOfConcept is a simple mock "main" to demonstrate how you could
+// build a simple migration utility.
+func proofOfConcept() error {
 	env := GetEnvironment()
-	ns := model.Namespace{DB: "mci", Collection: "test"}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	backend := driver.NewPriority()
+	if err := backend.Open(ctx); err != nil {
+		return err
+	}
+	defer backend.Close()
+
+	q := queue.NewSimpleRemoteOrdered(4)
+	if err := q.SetDriver(backend); err != nil {
+		return err
+	}
+
+	if err := q.Start(ctx); err != nil {
+		return err
+	}
+
+	if err := env.Setup(q, "mongodb://localhost:27017"); err != nil {
+		return err
+	}
+
+	ns := model.Namespace{DB: "mci", Collection: "test"}
 
 	app := &Application{
 		Generators: []Generator{
 			NewSimpleMigrationGenerator(env,
-				GeneratorOptions{
+				model.GeneratorOptions{
 					JobID:     "first",
 					DependsOn: []string{},
 					NS:        ns,
@@ -34,7 +53,7 @@ func main() {
 					"$rename": map[string]string{"time": "timeSince"},
 				}),
 			NewStreamMigrationGenerator(env,
-				GeneratorOptions{
+				model.GeneratorOptions{
 					JobID:     "second",
 					DependsOn: []string{"first"},
 					NS:        ns,
@@ -48,5 +67,6 @@ func main() {
 	}
 
 	app.Setup(env)
-	grip.CatchEmergencyFatal(app.Run(ctx))
+
+	return app.Run(ctx)
 }

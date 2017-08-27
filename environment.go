@@ -14,6 +14,7 @@ package anser
 
 import (
 	"sync"
+	"time"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -28,6 +29,8 @@ const (
 )
 
 var globalEnv *envState
+
+var dialTimeout = 10 * time.Second
 
 func init() {
 	globalEnv = &envState{
@@ -53,7 +56,7 @@ type Environment interface {
 	GetManualMigrationOperation(string) (ManualMigrationOperation, bool)
 	RegisterDocumentProcessor(string, DocumentProcessor) error
 	GetDocumentProcessor(string) (DocumentProcessor, bool)
-	NewDependencyManager(string, map[string]interface{}, model.Namespace) (dependency.Manager, error)
+	NewDependencyManager(string, map[string]interface{}, model.Namespace) dependency.Manager
 }
 
 // GetEnvironment returns the global environment object. Because this
@@ -80,7 +83,7 @@ func (e *envState) Setup(q amboy.Queue, mongodbURI string) error {
 		return errors.New("reconfiguring a queue is not supported")
 	}
 
-	session, err := mgo.Dial(mongodbURI)
+	session, err := mgo.DialWithTimeout(mongodbURI, dialTimeout)
 	if err != nil {
 		return errors.Wrap(err, "problem establishing connection")
 	}
@@ -89,13 +92,15 @@ func (e *envState) Setup(q amboy.Queue, mongodbURI string) error {
 		return errors.New("configuring anser environment with a non-running queue")
 	}
 
-	if session.DB("").Name != "test" {
-		e.metadataNS.DB = defaultAnserDB
+	dbName := session.DB("").Name
+	if dbName == "test" {
+		dbName = defaultAnserDB
 	}
 
 	e.queue = q
 	e.session = session
 	e.metadataNS.Collection = defaultMetadataCollection
+	e.metadataNS.DB = dbName
 	e.isSetup = true
 	e.deps = NewDependencyNetwork()
 
@@ -182,16 +187,15 @@ func (e *envState) MetadataNamespace() model.Namespace {
 	return e.metadataNS
 }
 
-func (e *envState) NewDependencyManager(migrationID string, query map[string]interface{}, ns model.Namespace) (dependency.Manager, error) {
+func (e *envState) NewDependencyManager(migrationID string, query map[string]interface{}, ns model.Namespace) dependency.Manager {
 	d := makeMigrationDependencyManager()
 
 	e.mu.RLock()
 	defer e.mu.RUnlock()
-	if err := d.SetEnv(e); err != nil {
-		return nil, errors.Wrap(err, "problem with environment")
-	}
+
+	d.MigrationHelper = NewMigrationHelper(e)
 	d.Query = query
 	d.MigrationID = migrationID
 
-	return d, nil
+	return d
 }

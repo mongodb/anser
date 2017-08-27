@@ -7,7 +7,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/tychoish/anser/model"
-	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -20,7 +19,6 @@ import (
 // getter methods should initialize nil values at runtime.
 type MigrationHelper interface {
 	Env() Environment
-	SetEnv(Environment) error
 
 	// Migrations need to record their state to help resolve
 	// dependencies to the database.
@@ -31,7 +29,7 @@ type MigrationHelper interface {
 	// interacting with the database to check the state of a
 	// migration operation, helpful in dependency approval.
 	PendingMigrationOperations(model.Namespace, map[string]interface{}) int
-	GetMigrationEvents(map[string]interface{}) (*mgo.Session, DocumentIterator, error)
+	GetMigrationEvents(map[string]interface{}) (DocumentIterator, error)
 }
 
 // NewMigrationHelper constructs a new migration helper instance. Use
@@ -48,22 +46,10 @@ func (e *migrationBase) Env() Environment {
 	defer e.Unlock()
 
 	if e.env == nil {
-		e.SetEnv(GetEnvironment())
+		e.env = GetEnvironment()
 	}
 
 	return e.env
-}
-
-func (e *migrationBase) SetEnv(en Environment) error {
-	if en == nil {
-		return errors.New("cannot set environment to nil")
-	}
-
-	e.Lock()
-	defer e.Unlock()
-	e.env = en
-
-	return nil
 }
 
 func (e *migrationBase) SaveMigrationEvent(m *model.MigrationMetadata) error {
@@ -117,15 +103,16 @@ func (e *migrationBase) PendingMigrationOperations(ns model.Namespace, q map[str
 	return num
 }
 
-func (e *migrationBase) GetMigrationEvents(q map[string]interface{}) (*mgo.Session, DocumentIterator, error) {
+func (e *migrationBase) GetMigrationEvents(q map[string]interface{}) (DocumentIterator, error) {
 	env := e.Env()
 	ns := env.MetadataNamespace()
 
 	session, err := env.GetSession()
 	if err != nil {
-		return nil, nil, errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
 
-	iter := session.DB(ns.DB).C(ns.Collection).Find(bson.M(q)).Iter()
-	return session, iter, nil
+	iter := NewCombinedIterator(session, session.DB(ns.DB).C(ns.Collection).Find(bson.M(q)).Iter())
+
+	return iter, nil
 }

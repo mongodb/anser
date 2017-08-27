@@ -57,7 +57,7 @@ type Application struct {
 // You can only run this function once; subsequent attempts return an
 // error but are a noop otherwise.
 func (a *Application) Setup(e Environment) error {
-	if !a.hasSetup {
+	if a.hasSetup {
 		return errors.New("cannot setup an application more than once")
 	}
 

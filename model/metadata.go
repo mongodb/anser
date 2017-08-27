@@ -1,6 +1,6 @@
 package model
 
-// MigrationMetadata records data about completed.
+// MigrationMetadata records data about completed migrations.
 type MigrationMetadata struct {
 	ID        string `bson:"_id" json:"id" yaml:"id"`
 	Migration string `bson:"migration" json:"migration" yaml:"migration"`

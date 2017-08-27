@@ -17,10 +17,10 @@ func init() {
 		func() amboy.Job { return makeStreamGenerator() })
 }
 
-func NewStreamMigrationGenerator(e Environment, opts GeneratorOptions, opName string) Generator {
+func NewStreamMigrationGenerator(e Environment, opts model.GeneratorOptions, opName string) Generator {
 	j := makeStreamGenerator()
 	j.SetID(opts.JobID)
-	j.SetDependency(opts.dependency())
+	j.SetDependency(GeneratorDependency(opts))
 	j.MigrationHelper = NewMigrationHelper(e)
 	j.NS = opts.NS
 	j.Query = opts.Query
@@ -88,12 +88,7 @@ func (j *streamMigrationGenerator) Run() {
 			Namespace:     j.NS,
 		}).(*streamMigrationJob)
 
-		dep, err := env.NewDependencyManager(j.ID(), j.Query, j.NS)
-		if err != nil {
-			j.AddError(err)
-			continue
-		}
-		m.SetDependency(dep)
+		m.SetDependency(env.NewDependencyManager(j.ID(), j.Query, j.NS))
 		m.SetID(fmt.Sprintf("%s.%v.%d", j.ID(), doc.ID, len(ids)))
 		ids = append(ids, m.ID())
 		j.Migrations = append(j.Migrations, m)

@@ -17,9 +17,9 @@ func init() {
 		func() amboy.Job { return makeManualGenerator() })
 }
 
-func NewManualMigrationGenerator(e Environment, opts GeneratorOptions, opName string) Generator {
+func NewManualMigrationGenerator(e Environment, opts model.GeneratorOptions, opName string) Generator {
 	j := makeManualGenerator()
-	j.SetDependency(opts.dependency())
+	j.SetDependency(GeneratorDependency(opts))
 	j.SetID(opts.JobID)
 	j.MigrationHelper = NewMigrationHelper(e)
 	j.NS = opts.NS
@@ -87,14 +87,8 @@ func (j *manualMigrationGenerator) Run() {
 			Migration:     j.ID(),
 			Namespace:     j.NS,
 		}).(*manualMigrationJob)
-		dep, err := env.NewDependencyManager(j.ID(), j.Query, j.NS)
-		if err != nil {
-			j.AddError(err)
-			grip.Warning(err)
-			continue
-		}
 
-		m.SetDependency(dep)
+		m.SetDependency(env.NewDependencyManager(j.ID(), j.Query, j.NS))
 		m.SetID(fmt.Sprintf("%s.%v.%d", j.ID(), doc.ID, len(ids)))
 		ids = append(ids, m.ID())
 		j.Migrations = append(j.Migrations, m)

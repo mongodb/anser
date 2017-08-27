@@ -34,17 +34,9 @@ type Generator interface {
 	amboy.Job
 }
 
-// GeneratorOptions hold all options common to all generator types,
-// and are used in the configuration of generator functions and their
-// dependency relationships.
-type GeneratorOptions struct {
-	JobID     string
-	DependsOn []string
-	NS        model.Namespace
-	Query     map[string]interface{}
-}
-
-func (o GeneratorOptions) dependency() dependency.Manager {
+// GeneratorDependency produces a configured dependency.Manager from
+// the specified Generator options.
+func GeneratorDependency(o model.GeneratorOptions) dependency.Manager {
 	// it might be worth considering using some other kind of
 	// dependency.Manager implementation.
 	dep := dependency.NewAlways()
