@@ -1,5 +1,7 @@
 package db
 
+// Session provides a subset of the functionality of the *mgo.Session
+// type.
 type Session interface {
 	Clone() Session
 	Copy() Session
@@ -7,14 +9,15 @@ type Session interface {
 	DB(string) Database
 }
 
+// Database provides a very limited subset of the mgo.DB type.
 type Database interface {
 	Name() string
 	C(string) Collection
 }
 
+// Collection provides access to the common query functionality of the
+// mgo.Collection type.
 type Collection interface {
-	// Indexes() ([]Index, error)
-
 	Pipe(interface{}) Pipeline
 	Find(interface{}) Query
 	FindId(interface{}) Query

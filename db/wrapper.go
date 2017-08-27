@@ -24,6 +24,7 @@ type pipelineWrapper struct {
 	*mgo.Pipe
 }
 
+// WrapSession takes an mgo.Session and returns an equivalent session object.
 func WrapSession(s *mgo.Session) Session                { return sessionWrapper{Session: s} }
 func (s sessionWrapper) Clone() Session                 { return sessionWrapper{s.Session.Clone()} }
 func (s sessionWrapper) Copy() Session                  { return sessionWrapper{s.Session.Copy()} }
