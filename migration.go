@@ -32,24 +32,27 @@ Stream
 Use stream migrations for processing using application logic, an
 iterator of documents. This is similar to the manual migration but
 allows reduce-like operations, or even destructive operations.
+
+db.Processor
+
+The db.Processor is an interface that you can implement for
+migrations to process groups of documents. Rather than defining
+migrations that operate on a single document, these migrations have
+access to an iterator and operate on many documents.
+
+The document processor system wraps the MGO driver internals using
+interfaces provided by the anser/db package.
+
 */
 
 package anser
 
 import (
 	"github.com/mongodb/amboy"
-	"github.com/tychoish/anser/db"
-	"gopkg.in/mgo.v2/bson"
 )
 
 // Migration is a type alias for amboy.Job, used to identify
 // migration-operations as distinct from other kinds of amboy.Jobs
 type Migration amboy.Job
 
-// ManualMigrationOperation defines the function object that performs
-// the transformation in the manual migration migrations. Register
-// these functions using RegisterManualMigrationOperation.
-//
-// Implementors of ManualMigrationOperations are responsible for
-// implementating idempotent operations.
-type ManualMigrationOperation func(db.Session, bson.Raw) error
+// this file is intentionally blank

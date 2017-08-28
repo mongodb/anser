@@ -19,7 +19,7 @@ func init() {
 
 func NewManualMigrationGenerator(e Environment, opts model.GeneratorOptions, opName string) Generator {
 	j := makeManualGenerator()
-	j.SetDependency(GeneratorDependency(opts))
+	j.SetDependency(generatorDependency(opts))
 	j.SetID(opts.JobID)
 	j.MigrationHelper = NewMigrationHelper(e)
 	j.NS = opts.NS

@@ -1,5 +1,8 @@
-// Package model provides public data structures to represent
+// Package model provides public data structures and interfaces to represent
 // migration operations.
+//
+// The model pacakge contains no non-trivial implementations and has no
+// dependencies outside of the standard library.
 package model
 
 // MigrationDefinitionSimple defines a single-document operation, performing a

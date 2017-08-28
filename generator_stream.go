@@ -20,7 +20,7 @@ func init() {
 func NewStreamMigrationGenerator(e Environment, opts model.GeneratorOptions, opName string) Generator {
 	j := makeStreamGenerator()
 	j.SetID(opts.JobID)
-	j.SetDependency(GeneratorDependency(opts))
+	j.SetDependency(generatorDependency(opts))
 	j.MigrationHelper = NewMigrationHelper(e)
 	j.NS = opts.NS
 	j.Query = opts.Query

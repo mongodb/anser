@@ -4,7 +4,6 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/pkg/errors"
-	"github.com/tychoish/anser"
 	"github.com/tychoish/anser/db"
 	"github.com/tychoish/anser/model"
 )
@@ -14,8 +13,8 @@ type Environment struct {
 	Session           *Session
 	Network           *DependencyNetwork
 	MetaNS            model.Namespace
-	MigrationRegistry map[string]anser.ManualMigrationOperation
-	ProcessorRegistry map[string]anser.DocumentProcessor
+	MigrationRegistry map[string]db.MigrationOperation
+	ProcessorRegistry map[string]db.Processor
 	DependecyManagers map[string]*DependencyManager
 	IsSetup           bool
 	SetupError        error
@@ -29,8 +28,8 @@ func NewEnvironment() *Environment {
 		Session:           &Session{},
 		Network:           NewDependencyNetwork(),
 		DependecyManagers: make(map[string]*DependencyManager),
-		MigrationRegistry: make(map[string]anser.ManualMigrationOperation),
-		ProcessorRegistry: make(map[string]anser.DocumentProcessor),
+		MigrationRegistry: make(map[string]db.MigrationOperation),
+		ProcessorRegistry: make(map[string]db.Processor),
 	}
 }
 
@@ -57,7 +56,7 @@ func (e *Environment) GetQueue() (amboy.Queue, error) {
 	return e.Queue, nil
 }
 
-func (e *Environment) GetDependencyNetwork() (anser.DependencyNetworker, error) {
+func (e *Environment) GetDependencyNetwork() (model.DependencyNetworker, error) {
 	if e.NetworkError != nil {
 		return nil, e.NetworkError
 	}
@@ -65,7 +64,7 @@ func (e *Environment) GetDependencyNetwork() (anser.DependencyNetworker, error) 
 	return e.Network, nil
 }
 
-func (e *Environment) RegisterManualMigrationOperation(name string, op anser.ManualMigrationOperation) error {
+func (e *Environment) RegisterManualMigrationOperation(name string, op db.MigrationOperation) error {
 	if _, ok := e.MigrationRegistry[name]; ok {
 		return errors.Errorf("migration operation %s already exists", name)
 	}
@@ -74,12 +73,12 @@ func (e *Environment) RegisterManualMigrationOperation(name string, op anser.Man
 	return nil
 }
 
-func (e *Environment) GetManualMigrationOperation(name string) (anser.ManualMigrationOperation, bool) {
+func (e *Environment) GetManualMigrationOperation(name string) (db.MigrationOperation, bool) {
 	op, ok := e.MigrationRegistry[name]
 	return op, ok
 }
 
-func (e *Environment) RegisterDocumentProcessor(name string, docp anser.DocumentProcessor) error {
+func (e *Environment) RegisterDocumentProcessor(name string, docp db.Processor) error {
 	if _, ok := e.ProcessorRegistry[name]; ok {
 		return errors.Errorf("document processor named %s already registered", name)
 	}
@@ -88,7 +87,7 @@ func (e *Environment) RegisterDocumentProcessor(name string, docp anser.Document
 	return nil
 }
 
-func (e *Environment) GetDocumentProcessor(name string) (anser.DocumentProcessor, bool) {
+func (e *Environment) GetDocumentProcessor(name string) (db.Processor, bool) {
 	docp, ok := e.ProcessorRegistry[name]
 	return docp, ok
 }

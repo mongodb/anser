@@ -1,5 +1,9 @@
 // Package mock contains mocked implementations of the interfaces
 // defined in the anser package.
+//
+// These implementations expose all internals and do not have external
+// dependencies. Indeed they should have interface-definition-only
+// dependencies on other anser packages.
 package mock
 
 import "github.com/tychoish/anser/db"
@@ -7,7 +11,7 @@ import "github.com/tychoish/anser/db"
 type Session struct {
 	DBs    map[string]*Database
 	URI    string
-	closed bool
+	Closed bool
 }
 
 func NewSession() *Session {
@@ -18,7 +22,7 @@ func NewSession() *Session {
 
 func (s *Session) Clone() db.Session { return s }
 func (s *Session) Copy() db.Session  { return s }
-func (s *Session) Close()            { s.closed = true }
+func (s *Session) Close()            { s.Closed = true }
 func (s *Session) DB(n string) db.Database {
 	if _, ok := s.DBs[n]; !ok {
 		s.DBs[n] = &Database{
@@ -65,37 +69,43 @@ func (c *Collection) UpsertId(id, u interface{}) (*db.ChangeInfo, error) {
 }
 
 type Query struct {
-	Query    interface{}
-	Project  interface{}
-	NumLimit int
-	NumSkip  int
+	Query      interface{}
+	Project    interface{}
+	NumLimit   int
+	NumSkip    int
+	AllError   error
+	OneError   error
+	CountNum   int
+	CountError error
 }
 
-func (q *Query) Count() (int, error)           { return 0, nil }
+func (q *Query) Count() (int, error)           { return q.CountNum, q.CountError }
 func (q *Query) Limit(n int) db.Query          { q.NumLimit = n; return q }
 func (q *Query) Select(p interface{}) db.Query { q.Project = p; return q }
 func (q *Query) Skip(n int) db.Query           { q.NumSkip = n; return q }
 func (q *Query) Iter() db.Iterator             { return &Iterator{Query: q} }
-func (q *Query) One(r interface{}) error       { return nil }
-func (q *Query) All(r interface{}) error       { return nil }
+func (q *Query) One(r interface{}) error       { return q.AllError }
+func (q *Query) All(r interface{}) error       { return q.OneError }
 func (q *Query) Sort(keys ...string) db.Query  { return q }
 
 type Iterator struct {
 	Query      *Query
 	Pipeline   *Pipeline
 	ShouldIter bool
-	Error      error
+	CloseError error
+	ErrError   error
 }
 
 func (i *Iterator) Next(out interface{}) bool { return i.ShouldIter }
-func (i *Iterator) Close() error              { return i.Error }
-func (i *Iterator) Err() error                { return i.Error }
+func (i *Iterator) Close() error              { return i.CloseError }
+func (i *Iterator) Err() error                { return i.ErrError }
 
 type Pipeline struct {
-	Pipe  interface{}
-	Error error
+	Pipe     interface{}
+	AllError error
+	OneError error
 }
 
 func (p *Pipeline) Iter() db.Iterator       { return &Iterator{Pipeline: p} }
-func (p *Pipeline) All(r interface{}) error { return p.Error }
-func (p *Pipeline) One(r interface{}) error { return p.Error }
+func (p *Pipeline) All(r interface{}) error { return p.AllError }
+func (p *Pipeline) One(r interface{}) error { return p.OneError }

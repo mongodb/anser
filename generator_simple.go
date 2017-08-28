@@ -19,7 +19,7 @@ func init() {
 
 func NewSimpleMigrationGenerator(e Environment, opts model.GeneratorOptions, update map[string]interface{}) Generator {
 	j := makeSimpleGenerator()
-	j.SetDependency(GeneratorDependency(opts))
+	j.SetDependency(generatorDependency(opts))
 	j.SetID(opts.JobID)
 	j.MigrationHelper = NewMigrationHelper(e)
 	j.NS = opts.NS

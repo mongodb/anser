@@ -34,9 +34,9 @@ type Generator interface {
 	amboy.Job
 }
 
-// GeneratorDependency produces a configured dependency.Manager from
+// generatorDependency produces a configured dependency.Manager from
 // the specified Generator options.
-func GeneratorDependency(o model.GeneratorOptions) dependency.Manager {
+func generatorDependency(o model.GeneratorOptions) dependency.Manager {
 	// it might be worth considering using some other kind of
 	// dependency.Manager implementation.
 	dep := dependency.NewAlways()

@@ -46,8 +46,8 @@ func (s *EnvImplSuite) TearDownSuite() {
 
 func (s *EnvImplSuite) SetupTest() {
 	s.env = &envState{
-		migrations: make(map[string]ManualMigrationOperation),
-		processor:  make(map[string]DocumentProcessor),
+		migrations: make(map[string]db.MigrationOperation),
+		processor:  make(map[string]db.Processor),
 	}
 
 	s.Nil(s.env.session)

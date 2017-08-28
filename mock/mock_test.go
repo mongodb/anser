@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/tychoish/anser"
 	"github.com/tychoish/anser/db"
+	"github.com/tychoish/anser/model"
 )
 
 func TestInterfaces(t *testing.T) {
@@ -19,7 +20,7 @@ func TestInterfaces(t *testing.T) {
 	assert.Implements((*db.Pipeline)(nil), &Pipeline{})
 	assert.Implements((*db.Iterator)(nil), &Iterator{})
 
-	assert.Implements((*anser.DependencyNetworker)(nil), &DependencyNetwork{})
+	assert.Implements((*model.DependencyNetworker)(nil), &DependencyNetwork{})
 	assert.Implements((*anser.Environment)(nil), &Environment{})
 	assert.Implements((*dependency.Manager)(nil), &DependencyManager{})
 }

@@ -35,8 +35,8 @@ var dialTimeout = 10 * time.Second
 
 func init() {
 	globalEnv = &envState{
-		migrations: make(map[string]ManualMigrationOperation),
-		processor:  make(map[string]DocumentProcessor),
+		migrations: make(map[string]db.MigrationOperation),
+		processor:  make(map[string]db.Processor),
 	}
 }
 
@@ -51,12 +51,12 @@ type Environment interface {
 	Setup(amboy.Queue, string) error
 	GetSession() (db.Session, error)
 	GetQueue() (amboy.Queue, error)
-	GetDependencyNetwork() (DependencyNetworker, error)
+	GetDependencyNetwork() (model.DependencyNetworker, error)
 	MetadataNamespace() model.Namespace
-	RegisterManualMigrationOperation(string, ManualMigrationOperation) error
-	GetManualMigrationOperation(string) (ManualMigrationOperation, bool)
-	RegisterDocumentProcessor(string, DocumentProcessor) error
-	GetDocumentProcessor(string) (DocumentProcessor, bool)
+	RegisterManualMigrationOperation(string, db.MigrationOperation) error
+	GetManualMigrationOperation(string) (db.MigrationOperation, bool)
+	RegisterDocumentProcessor(string, db.Processor) error
+	GetDocumentProcessor(string) (db.Processor, bool)
 	NewDependencyManager(string, map[string]interface{}, model.Namespace) dependency.Manager
 }
 
@@ -69,9 +69,9 @@ type envState struct {
 	queue      amboy.Queue
 	session    *mgo.Session
 	metadataNS model.Namespace
-	deps       DependencyNetworker
-	migrations map[string]ManualMigrationOperation
-	processor  map[string]DocumentProcessor
+	deps       model.DependencyNetworker
+	migrations map[string]db.MigrationOperation
+	processor  map[string]db.Processor
 	isSetup    bool
 	mu         sync.RWMutex
 }
@@ -103,7 +103,7 @@ func (e *envState) Setup(q amboy.Queue, mongodbURI string) error {
 	e.metadataNS.Collection = defaultMetadataCollection
 	e.metadataNS.DB = dbName
 	e.isSetup = true
-	e.deps = NewDependencyNetwork()
+	e.deps = newDependencyNetwork()
 
 	return nil
 }
@@ -130,7 +130,7 @@ func (e *envState) GetQueue() (amboy.Queue, error) {
 	return e.queue, nil
 }
 
-func (e *envState) GetDependencyNetwork() (DependencyNetworker, error) {
+func (e *envState) GetDependencyNetwork() (model.DependencyNetworker, error) {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
@@ -141,7 +141,7 @@ func (e *envState) GetDependencyNetwork() (DependencyNetworker, error) {
 	return e.deps, nil
 }
 
-func (e *envState) RegisterManualMigrationOperation(name string, op ManualMigrationOperation) error {
+func (e *envState) RegisterManualMigrationOperation(name string, op db.MigrationOperation) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
@@ -153,7 +153,7 @@ func (e *envState) RegisterManualMigrationOperation(name string, op ManualMigrat
 	return nil
 }
 
-func (e *envState) GetManualMigrationOperation(name string) (ManualMigrationOperation, bool) {
+func (e *envState) GetManualMigrationOperation(name string) (db.MigrationOperation, bool) {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
@@ -161,7 +161,7 @@ func (e *envState) GetManualMigrationOperation(name string) (ManualMigrationOper
 	return op, ok
 }
 
-func (e *envState) RegisterDocumentProcessor(name string, docp DocumentProcessor) error {
+func (e *envState) RegisterDocumentProcessor(name string, docp db.Processor) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
@@ -173,7 +173,7 @@ func (e *envState) RegisterDocumentProcessor(name string, docp DocumentProcessor
 	return nil
 }
 
-func (e *envState) GetDocumentProcessor(name string) (DocumentProcessor, bool) {
+func (e *envState) GetDocumentProcessor(name string) (db.Processor, bool) {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
