@@ -6,7 +6,11 @@
 // dependencies on other anser packages.
 package mock
 
-import "github.com/tychoish/anser/db"
+import (
+	"errors"
+
+	"github.com/tychoish/anser/db"
+)
 
 type Session struct {
 	DBs    map[string]*Database
@@ -50,12 +54,28 @@ func (d *Database) C(n string) db.Collection {
 type Collection struct {
 	Name         string
 	InsertedDocs []interface{}
+	FailWrites   bool
+	Queries      []*Query
+	Pipelines    []*Pipeline
+	NumDocs      int
 }
 
-func (c *Collection) Pipe(p interface{}) db.Pipeline                     { return &Pipeline{Pipe: p} }
-func (c *Collection) Find(q interface{}) db.Query                        { return &Query{Query: q} }
-func (c *Collection) FindId(q interface{}) db.Query                      { return &Query{Query: q} }
-func (c *Collection) Count() (int, error)                                { return len(c.InsertedDocs), nil }
+func (c *Collection) Pipe(p interface{}) db.Pipeline {
+	pm := &Pipeline{Pipe: p}
+	c.Pipelines = append(c.Pipelines, pm)
+	return pm
+}
+func (c *Collection) Find(q interface{}) db.Query {
+	qm := &Query{Query: q}
+	c.Queries = append(c.Queries, qm)
+	return qm
+}
+func (c *Collection) FindId(q interface{}) db.Query {
+	qm := &Query{Query: q}
+	c.Queries = append(c.Queries, qm)
+	return qm
+}
+func (c *Collection) Count() (int, error)                                { return c.NumDocs, nil }
 func (c *Collection) Update(q, u interface{}) error                      { return nil }
 func (c *Collection) UpdateAll(q, u interface{}) (*db.ChangeInfo, error) { return &db.ChangeInfo{}, nil }
 func (c *Collection) UpdateId(id, u interface{}) error                   { return nil }
@@ -65,12 +85,17 @@ func (c *Collection) RemoveId(id interface{}) error                      { retur
 func (c *Collection) Insert(docs ...interface{}) error                   { c.InsertedDocs = docs; return nil }
 func (c *Collection) Upsert(q, u interface{}) (*db.ChangeInfo, error)    { return &db.ChangeInfo{}, nil }
 func (c *Collection) UpsertId(id, u interface{}) (*db.ChangeInfo, error) {
+	if c.FailWrites {
+		return nil, errors.New("writes fail")
+	}
+	c.InsertedDocs = append(c.InsertedDocs, u)
 	return &db.ChangeInfo{0, 0, id}, nil
 }
 
 type Query struct {
 	Query      interface{}
 	Project    interface{}
+	SortKeys   []string
 	NumLimit   int
 	NumSkip    int
 	AllError   error
@@ -86,7 +111,7 @@ func (q *Query) Skip(n int) db.Query           { q.NumSkip = n; return q }
 func (q *Query) Iter() db.Iterator             { return &Iterator{Query: q} }
 func (q *Query) One(r interface{}) error       { return q.AllError }
 func (q *Query) All(r interface{}) error       { return q.OneError }
-func (q *Query) Sort(keys ...string) db.Query  { return q }
+func (q *Query) Sort(keys ...string) db.Query  { q.SortKeys = keys; return q }
 
 type Iterator struct {
 	Query      *Query

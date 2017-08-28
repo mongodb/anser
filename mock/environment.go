@@ -25,7 +25,7 @@ type Environment struct {
 
 func NewEnvironment() *Environment {
 	return &Environment{
-		Session:           &Session{},
+		Session:           NewSession(),
 		Network:           NewDependencyNetwork(),
 		DependecyManagers: make(map[string]*DependencyManager),
 		MigrationRegistry: make(map[string]db.MigrationOperation),

@@ -6,7 +6,8 @@ import mgo "gopkg.in/mgo.v2"
 // mgo.Iter, with a modified Close() method that also closes the
 // provided mgo session after closing the iterator.
 func NewCombinedIterator(ses Session, iter Iterator) Iterator {
-	c := combinedCloser{
+
+	c := CombinedCloser{
 		Iterator: iter,
 	}
 
@@ -18,12 +19,12 @@ func NewCombinedIterator(ses Session, iter Iterator) Iterator {
 	return c
 }
 
-type combinedCloser struct {
+type CombinedCloser struct {
 	Iterator
 	ses *mgo.Session
 }
 
-func (c combinedCloser) Close() error {
+func (c CombinedCloser) Close() error {
 	err := c.Iterator.Close()
 
 	if c.ses != nil {
