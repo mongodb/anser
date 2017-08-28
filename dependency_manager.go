@@ -43,9 +43,7 @@ func makeMigrationDependencyManager() *migrationDependency {
 	}
 }
 
-func (d *migrationDependency) Type() dependency.TypeInfo {
-	return d.T
-}
+func (d *migrationDependency) Type() dependency.TypeInfo { return d.T }
 
 func (d *migrationDependency) State() dependency.State {
 	switch num := d.PendingMigrationOperations(d.NS, d.Query); num {
@@ -103,12 +101,4 @@ func processEdges(numEdges int, iter db.Iterator) dependency.State {
 	return dependency.Ready
 }
 
-func getDependencyStateQuery(ids []string) bson.M {
-	orQuery := make([]bson.M, len(ids))
-
-	for idx, id := range ids {
-		orQuery[idx] = bson.M{"_id": id}
-	}
-
-	return bson.M{"$or": orQuery}
-}
+func getDependencyStateQuery(ids []string) bson.M { return bson.M{"_id": bson.M{"$in": ids}} }
