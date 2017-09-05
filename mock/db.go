@@ -58,6 +58,7 @@ type Collection struct {
 	Queries      []*Query
 	Pipelines    []*Pipeline
 	NumDocs      int
+	QueryError   error
 }
 
 func (c *Collection) Pipe(p interface{}) db.Results {
@@ -66,12 +67,12 @@ func (c *Collection) Pipe(p interface{}) db.Results {
 	return pm
 }
 func (c *Collection) Find(q interface{}) db.Query {
-	qm := &Query{Query: q}
+	qm := &Query{Query: q, Error: c.QueryError}
 	c.Queries = append(c.Queries, qm)
 	return qm
 }
 func (c *Collection) FindId(q interface{}) db.Query {
-	qm := &Query{Query: q}
+	qm := &Query{Query: q, Error: c.QueryError}
 	c.Queries = append(c.Queries, qm)
 	return qm
 }
@@ -93,44 +94,40 @@ func (c *Collection) UpsertId(id, u interface{}) (*db.ChangeInfo, error) {
 }
 
 type Query struct {
-	Query      interface{}
-	Project    interface{}
-	SortKeys   []string
-	NumLimit   int
-	NumSkip    int
-	AllError   error
-	OneError   error
-	CountNum   int
-	CountError error
+	Query    interface{}
+	Project  interface{}
+	SortKeys []string
+	NumLimit int
+	NumSkip  int
+	Error    error
+	CountNum int
 }
 
-func (q *Query) Count() (int, error)           { return q.CountNum, q.CountError }
+func (q *Query) Count() (int, error)           { return q.CountNum, q.Error }
 func (q *Query) Limit(n int) db.Query          { q.NumLimit = n; return q }
 func (q *Query) Select(p interface{}) db.Query { q.Project = p; return q }
 func (q *Query) Skip(n int) db.Query           { q.NumSkip = n; return q }
-func (q *Query) Iter() db.Iterator             { return &Iterator{Query: q} }
-func (q *Query) One(r interface{}) error       { return q.AllError }
-func (q *Query) All(r interface{}) error       { return q.OneError }
+func (q *Query) Iter() db.Iterator             { return &Iterator{Error: q.Error, Query: q} }
+func (q *Query) One(r interface{}) error       { return q.Error }
+func (q *Query) All(r interface{}) error       { return q.Error }
 func (q *Query) Sort(keys ...string) db.Query  { q.SortKeys = keys; return q }
 
 type Iterator struct {
 	Query      *Query
 	Pipeline   *Pipeline
 	ShouldIter bool
-	CloseError error
-	ErrError   error
+	Error      error
 }
 
 func (i *Iterator) Next(out interface{}) bool { return i.ShouldIter }
-func (i *Iterator) Close() error              { return i.CloseError }
-func (i *Iterator) Err() error                { return i.ErrError }
+func (i *Iterator) Close() error              { return i.Error }
+func (i *Iterator) Err() error                { return i.Error }
 
 type Pipeline struct {
-	Pipe     interface{}
-	AllError error
-	OneError error
+	Pipe  interface{}
+	Error error
 }
 
 func (p *Pipeline) Iter() db.Iterator       { return &Iterator{Pipeline: p} }
-func (p *Pipeline) All(r interface{}) error { return p.AllError }
-func (p *Pipeline) One(r interface{}) error { return p.OneError }
+func (p *Pipeline) All(r interface{}) error { return p.Error }
+func (p *Pipeline) One(r interface{}) error { return p.Error }

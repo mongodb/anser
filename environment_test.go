@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"github.com/tychoish/anser/db"
+	"github.com/tychoish/anser/model"
 	"golang.org/x/net/context"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -77,7 +78,7 @@ func (s *EnvImplSuite) TestUnstartedQueueCausesError() {
 	s.env.isSetup = false
 	s.env.queue = nil
 
-	s.Error(s.env.Setup(queue.NewLocalUnordered(2), "mongodb://127.0.1.1:80/"))
+	s.Error(s.env.Setup(queue.NewLocalUnordered(2), "mongodb://localhost:27017/"))
 	s.Nil(s.env.queue)
 	s.False(s.env.isSetup)
 }
@@ -144,6 +145,18 @@ func (s *EnvImplSuite) TestDocumentProcessor() {
 	dp, ok = s.env.GetDocumentProcessor("bar")
 	s.False(ok)
 	s.Nil(dp)
+}
+
+func (s *EnvImplSuite) TestDependencyNetworkConstructor() {
+	dep := s.env.NewDependencyManager("foo", map[string]interface{}{}, model.Namespace{"db", "coll"})
+
+	s.NotNil(dep)
+	mdep := dep.(*migrationDependency)
+	s.Equal(mdep.Env(), s.env)
+	s.Len(mdep.Query, 0)
+	s.Equal(mdep.NS.DB, "db")
+	s.Equal(mdep.NS.Collection, "coll")
+	s.Equal(mdep.MigrationID, "foo")
 }
 
 func TestUninitializedEnvErrors(t *testing.T) {

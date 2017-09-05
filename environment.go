@@ -197,6 +197,7 @@ func (e *envState) NewDependencyManager(migrationID string, query map[string]int
 	d.MigrationHelper = NewMigrationHelper(e)
 	d.Query = query
 	d.MigrationID = migrationID
+	d.NS = ns
 
 	return d
 }

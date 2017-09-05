@@ -62,6 +62,10 @@ func (a *Application) Setup(e Environment) error {
 		return errors.New("cannot setup an application more than once")
 	}
 
+	if e == nil {
+		return errors.New("cannot setup an application with a nil environment")
+	}
+
 	a.env = e
 	network, err := e.GetDependencyNetwork()
 	if err != nil {

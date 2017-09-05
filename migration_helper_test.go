@@ -121,12 +121,46 @@ func (s *MigrationHelperSuite) TestGetMigrationEvents() {
 	s.Len(coll.Queries, 1)
 }
 
+func (s *MigrationHelperSuite) TestErrorCaseInMigrationFinishing() {
+	env := mock.NewEnvironment()
+	ns := model.Namespace{DB: "dbname", Collection: "collname"}
+	env.MetaNS = ns
+	env.Session.DB(ns.DB).C(ns.Collection).(*mock.Collection).FailWrites = true
+
+	mh := NewMigrationHelper(env).(*migrationBase)
+
+	base := &job.Base{}
+	s.False(base.HasErrors())
+	s.False(base.Status().Completed)
+	mh.FinishMigration("foo", base)
+	s.True(base.Status().Completed)
+	s.True(base.HasErrors())
+}
+
+func (s *MigrationHelperSuite) TestPendingMigrationsWithoutConfiguratione() {
+	s.Zero(s.mh.PendingMigrationOperations(model.Namespace{DB: "dbname", Collection: "collname"}, map[string]interface{}{}))
+}
+
+func (s *MigrationHelperSuite) TestPendingMigrationsWithDBError() {
+	s.env.SessionError = errors.New("failed")
+	ns := model.Namespace{DB: "dbname", Collection: "collname"}
+	s.Equal(-1, s.mh.PendingMigrationOperations(ns, map[string]interface{}{}))
+	s.env.SessionError = nil
+
+	s.env.Session.DB(ns.DB).C(ns.Collection).(*mock.Collection).QueryError = errors.New("failed")
+	s.Equal(-1, s.mh.PendingMigrationOperations(ns, map[string]interface{}{}))
+}
+
 func TestDefaultEnvironmentAndMigrationHelperState(t *testing.T) {
 	assert := assert.New(t)
 	env := &envState{}
-	mh := NewMigrationHelper(env)
+	mh := NewMigrationHelper(env).(*migrationBase)
 	assert.Equal(env, mh.Env())
-	assert.Equal(env, mh.(*migrationBase).env)
+	assert.Equal(env, mh.env)
 
 	assert.Equal(globalEnv, GetEnvironment())
+
+	mh.env = nil
+	assert.Equal(globalEnv, mh.Env())
+	assert.NotEqual(mh.Env(), env)
 }
