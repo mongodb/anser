@@ -17,7 +17,8 @@ func TestInterfaces(t *testing.T) {
 	assert.Implements((*db.Database)(nil), &Database{})
 	assert.Implements((*db.Collection)(nil), &Collection{})
 	assert.Implements((*db.Query)(nil), &Query{})
-	assert.Implements((*db.Pipeline)(nil), &Pipeline{})
+	assert.Implements((*db.Results)(nil), &Query{})
+	assert.Implements((*db.Results)(nil), &Pipeline{})
 	assert.Implements((*db.Iterator)(nil), &Iterator{})
 
 	assert.Implements((*model.DependencyNetworker)(nil), &DependencyNetwork{})
