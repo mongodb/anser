@@ -18,7 +18,7 @@ type Database interface {
 // Collection provides access to the common query functionality of the
 // mgo.Collection type.
 type Collection interface {
-	Pipe(interface{}) Pipeline
+	Pipe(interface{}) Results
 	Find(interface{}) Query
 	FindId(interface{}) Query
 	Count() (int, error)
@@ -38,10 +38,9 @@ type Query interface {
 	Limit(int) Query
 	Select(interface{}) Query
 	Skip(n int) Query
-	Iter() Iterator
-	One(interface{}) error
-	All(interface{}) error
 	Sort(...string) Query
+
+	Results
 }
 
 // Iterator is a more narrow subset of mgo's Iter type that
@@ -53,7 +52,10 @@ type Iterator interface {
 	Err() error
 }
 
-type Pipeline interface {
+// Results reflect the output of a database operation and is part of
+// the query interface, and is returned by the pipeline (e.g
+// aggregation operation.)
+type Results interface {
 	All(interface{}) error
 	One(interface{}) error
 	Iter() Iterator
