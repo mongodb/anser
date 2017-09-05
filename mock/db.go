@@ -60,7 +60,7 @@ type Collection struct {
 	NumDocs      int
 }
 
-func (c *Collection) Pipe(p interface{}) db.Pipeline {
+func (c *Collection) Pipe(p interface{}) db.Results {
 	pm := &Pipeline{Pipe: p}
 	c.Pipelines = append(c.Pipelines, pm)
 	return pm

@@ -31,7 +31,7 @@ func (s sessionWrapper) Copy() Session                  { return sessionWrapper{
 func (s sessionWrapper) DB(d string) Database           { return databaseWrapper{s.Session.DB(d)} }
 func (d databaseWrapper) Name() string                  { return d.Database.Name }
 func (d databaseWrapper) C(n string) Collection         { return collectionWrapper{d.Database.C(n)} }
-func (c collectionWrapper) Pipe(p interface{}) Pipeline { return pipelineWrapper{c.Collection.Pipe(p)} }
+func (c collectionWrapper) Pipe(p interface{}) Results  { return pipelineWrapper{c.Collection.Pipe(p)} }
 func (c collectionWrapper) Find(q interface{}) Query    { return queryWrapper{c.Collection.Find(q)} }
 func (c collectionWrapper) FindId(id interface{}) Query { return queryWrapper{c.Collection.FindId(id)} }
 func (p pipelineWrapper) Iter() Iterator                { return p.Pipe.Iter() }
