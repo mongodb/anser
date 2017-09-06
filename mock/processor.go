@@ -17,6 +17,11 @@ type Processor struct {
 func (p *Processor) Load(ns model.Namespace, query map[string]interface{}) db.Iterator {
 	p.NS = ns
 	p.Query = query
+
+	if p.Iter == nil {
+		return nil
+	}
+
 	return p.Iter
 }
 
