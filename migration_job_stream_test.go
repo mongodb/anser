@@ -35,6 +35,7 @@ func TestStreamMigrationJob(t *testing.T) {
 	job.MigrationHelper = mh
 	job.Definition.ProcessorName = processorTypeName
 	job.Run()
+	assert.True(job.Status().Completed)
 	if assert.True(job.HasErrors()) {
 		err = job.Error()
 		assert.Error(err)
@@ -51,6 +52,7 @@ func TestStreamMigrationJob(t *testing.T) {
 	job.Definition.ProcessorName = processorTypeName
 	job.MigrationHelper = mh
 	job.Run()
+	assert.True(job.Status().Completed)
 	if assert.True(job.HasErrors()) {
 		err = job.Error()
 		assert.Error(err)
@@ -65,6 +67,7 @@ func TestStreamMigrationJob(t *testing.T) {
 	processor.Iter = &mock.Iterator{}
 	job.Run()
 	assert.False(job.HasErrors())
+	assert.True(job.Status().Completed)
 
 	// reset for the next case:
 	// we have an iterator that returns an error.
@@ -73,7 +76,7 @@ func TestStreamMigrationJob(t *testing.T) {
 	job.Definition.ProcessorName = processorTypeName
 	processor.MigrateError = errors.New("has error 123")
 	job.Run()
-
+	assert.True(job.Status().Completed)
 	if assert.True(job.HasErrors()) {
 		err = job.Error()
 		assert.Error(err)

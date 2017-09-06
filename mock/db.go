@@ -55,6 +55,7 @@ func (d *Database) C(n string) db.Collection {
 type Collection struct {
 	Name         string
 	InsertedDocs []interface{}
+	UpdatedIds   []interface{}
 	FailWrites   bool
 	Queries      []*Query
 	Pipelines    []*Pipeline
@@ -80,7 +81,6 @@ func (c *Collection) FindId(q interface{}) db.Query {
 func (c *Collection) Count() (int, error)                                { return c.NumDocs, nil }
 func (c *Collection) Update(q, u interface{}) error                      { return nil }
 func (c *Collection) UpdateAll(q, u interface{}) (*db.ChangeInfo, error) { return &db.ChangeInfo{}, nil }
-func (c *Collection) UpdateId(id, u interface{}) error                   { return nil }
 func (c *Collection) Remove(q interface{}) error                         { return nil }
 func (c *Collection) RemoveAll(q interface{}) (*db.ChangeInfo, error)    { return &db.ChangeInfo{}, nil }
 func (c *Collection) RemoveId(id interface{}) error                      { return nil }
@@ -92,6 +92,14 @@ func (c *Collection) UpsertId(id, u interface{}) (*db.ChangeInfo, error) {
 	}
 	c.InsertedDocs = append(c.InsertedDocs, u)
 	return &db.ChangeInfo{0, 0, id}, nil
+}
+
+func (c *Collection) UpdateId(id, u interface{}) error {
+	if c.FailWrites {
+		return errors.New("writes fail")
+	}
+	c.UpdatedIds = append(c.UpdatedIds, id)
+	return nil
 }
 
 type Query struct {
