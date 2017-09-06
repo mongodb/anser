@@ -8,6 +8,7 @@ import (
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
+	"github.com/tychoish/anser/db"
 	"github.com/tychoish/anser/model"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -73,11 +74,20 @@ func (j *simpleMigrationGenerator) Run() {
 	coll := session.DB(j.NS.DB).C(j.NS.Collection)
 	iter := coll.Find(j.Query).Select(bson.M{"_id": 1}).Iter()
 
+	network.AddGroup(j.ID(), j.generateJobs(env, iter))
+
+	if err := iter.Close(); err != nil {
+		j.AddError(err)
+		return
+	}
+}
+
+func (j *simpleMigrationGenerator) generateJobs(env Environment, iter db.Iterator) []string {
+	ids := []string{}
 	doc := struct {
 		ID interface{} `bson:"_id"`
 	}{}
 
-	ids := []string{}
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	for iter.Next(&doc) {
@@ -94,12 +104,7 @@ func (j *simpleMigrationGenerator) Run() {
 		j.Migrations = append(j.Migrations, m)
 	}
 
-	network.AddGroup(j.ID(), ids)
-
-	if err := iter.Close(); err != nil {
-		j.AddError(err)
-		return
-	}
+	return ids
 }
 
 func (j *simpleMigrationGenerator) Jobs() <-chan amboy.Job {
