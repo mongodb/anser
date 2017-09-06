@@ -8,6 +8,7 @@ package mock
 
 import (
 	"errors"
+	"reflect"
 
 	"github.com/tychoish/anser/db"
 )
@@ -113,15 +114,30 @@ func (q *Query) All(r interface{}) error       { return q.Error }
 func (q *Query) Sort(keys ...string) db.Query  { q.SortKeys = keys; return q }
 
 type Iterator struct {
-	Query      *Query
-	Pipeline   *Pipeline
-	ShouldIter bool
-	Error      error
+	Query       *Query
+	Pipeline    *Pipeline
+	ShouldIter  bool
+	Error       error
+	NumIterated int
+	Results     []interface{}
 }
 
-func (i *Iterator) Next(out interface{}) bool { return i.ShouldIter }
-func (i *Iterator) Close() error              { return i.Error }
-func (i *Iterator) Err() error                { return i.Error }
+func (i *Iterator) Close() error { return i.Error }
+func (i *Iterator) Err() error   { return i.Error }
+func (i *Iterator) Next(out interface{}) bool {
+	if i.ShouldIter {
+		outVal := reflect.ValueOf(out)
+
+		outVal.Elem().Set(reflect.ValueOf(i.Results[i.NumIterated]).Elem())
+		i.NumIterated++
+		if i.NumIterated-1 >= len(i.Results) {
+			return false
+		}
+		return true
+	}
+
+	return false
+}
 
 type Pipeline struct {
 	Pipe  interface{}

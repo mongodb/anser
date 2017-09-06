@@ -15,7 +15,7 @@ gobin := $(shell which go)
 # end environment setup
 
 
-# project dependencies 
+# project dependencies
 #   These dependencies are installed at build time, if needed. These
 #   will be vendored eventually.
 deps := github.com/mongodb/amboy
@@ -197,7 +197,7 @@ $(buildDir)/output.lint:$(buildDir)/run-linter .FORCE
 #  targets to process and generate coverage reports
 $(buildDir)/output.%.coverage:$(buildDir)/test.% .FORCE
 	$(testRunEnv) ./$< $(testArgs) -test.coverprofile=./$@ 2>&1 | tee $(subst coverage,test,$@)
-	@-[ -f $@ ] && go tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
+	@-[ -f $@ ] && go tool cover -func=$@ | column -t
 $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage .FORCE
 	$(vendorGopath) go tool cover -html=$< -o $@
 # end test and coverage artifacts
