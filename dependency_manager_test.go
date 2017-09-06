@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/mongodb/amboy/dependency"
+	"github.com/mongodb/amboy/registry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"github.com/tychoish/anser/mock"
@@ -26,6 +27,15 @@ func (s *DependencyManagerSuite) SetupTest() {
 	s.dep = makeMigrationDependencyManager()
 	s.helper = &MigrationHelperMock{}
 	s.dep.MigrationHelper = s.helper
+}
+
+func (s *DependencyManagerSuite) TestFactory() {
+	factory, err := registry.GetDependencyFactory("anser-migration")
+	s.NoError(err)
+	dep, ok := factory().(*migrationDependency)
+	s.True(ok)
+	dep.MigrationHelper = s.helper
+	s.Equal(dep, s.dep)
 }
 
 func (s *DependencyManagerSuite) TestDefaultTypeInfo() {

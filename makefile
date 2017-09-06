@@ -2,6 +2,8 @@
 name := anser
 buildDir := build
 packages := $(name) mock model db
+orgPath := github.com/tychoish
+projectPath := $(orgPath)/$(name)
 # end project configuration
 
 # start environment setup
@@ -197,7 +199,7 @@ $(buildDir)/output.lint:$(buildDir)/run-linter .FORCE
 #  targets to process and generate coverage reports
 $(buildDir)/output.%.coverage:$(buildDir)/test.% .FORCE
 	$(testRunEnv) ./$< $(testArgs) -test.coverprofile=./$@ 2>&1 | tee $(subst coverage,test,$@)
-	@-[ -f $@ ] && go tool cover -func=$@ | column -t
+	@-[ -f $@ ] && go tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
 $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage .FORCE
 	$(vendorGopath) go tool cover -html=$< -o $@
 # end test and coverage artifacts
