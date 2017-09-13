@@ -6,7 +6,7 @@ import (
 	"github.com/mongodb/amboy/queue"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/suite"
-	"github.com/tychoish/anser/mock"
+	"github.com/mongodb/anser/mock"
 	"golang.org/x/net/context"
 )
 

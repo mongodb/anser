@@ -16,7 +16,7 @@ import (
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"github.com/tychoish/anser/model"
+	"github.com/mongodb/anser/model"
 )
 
 // Generator is a amboy.Job super set used to store

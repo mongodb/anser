@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"github.com/mongodb/grip"
-	"github.com/tychoish/anser/model"
+	"github.com/mongodb/anser/model"
 	"github.com/tychoish/tarjan"
 )
 

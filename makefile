@@ -2,7 +2,7 @@
 name := anser
 buildDir := build
 packages := $(name) mock model db
-orgPath := github.com/tychoish
+orgPath := github.com/mongodb
 projectPath := $(orgPath)/$(name)
 # end project configuration
 

@@ -8,9 +8,9 @@ import (
 	"github.com/mongodb/amboy/registry"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
-	"github.com/tychoish/anser/db"
-	"github.com/tychoish/anser/mock"
-	"github.com/tychoish/anser/model"
+	"github.com/mongodb/anser/db"
+	"github.com/mongodb/anser/mock"
+	"github.com/mongodb/anser/model"
 )
 
 func passingManualMigrationOp(s db.Session, d bson.Raw) error { return nil }

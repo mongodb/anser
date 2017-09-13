@@ -9,8 +9,8 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"github.com/tychoish/anser/db"
-	"github.com/tychoish/anser/model"
+	"github.com/mongodb/anser/db"
+	"github.com/mongodb/anser/model"
 	"golang.org/x/net/context"
 	"gopkg.in/mgo.v2/bson"
 )

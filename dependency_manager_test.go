@@ -8,8 +8,8 @@ import (
 	"github.com/mongodb/amboy/registry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"github.com/tychoish/anser/mock"
-	"github.com/tychoish/anser/model"
+	"github.com/mongodb/anser/mock"
+	"github.com/mongodb/anser/model"
 	"gopkg.in/mgo.v2/bson"
 )
 

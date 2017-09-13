@@ -1,7 +1,7 @@
 package db
 
 import (
-	"github.com/tychoish/anser/model"
+	"github.com/mongodb/anser/model"
 	"gopkg.in/mgo.v2/bson"
 )
 

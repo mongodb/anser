@@ -7,7 +7,7 @@ import (
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/amboy/queue/driver"
 	"github.com/stretchr/testify/assert"
-	"github.com/tychoish/anser/model"
+	"github.com/mongodb/anser/model"
 	"golang.org/x/net/context"
 )
 

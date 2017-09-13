@@ -5,9 +5,9 @@ import (
 
 	"github.com/mongodb/amboy/dependency"
 	"github.com/stretchr/testify/assert"
-	"github.com/tychoish/anser"
-	"github.com/tychoish/anser/db"
-	"github.com/tychoish/anser/model"
+	"github.com/mongodb/anser"
+	"github.com/mongodb/anser/db"
+	"github.com/mongodb/anser/model"
 )
 
 func TestInterfaces(t *testing.T) {

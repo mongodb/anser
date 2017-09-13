@@ -2,7 +2,7 @@ package mock
 
 import (
 	"github.com/mongodb/amboy/dependency"
-	"github.com/tychoish/anser/model"
+	"github.com/mongodb/anser/model"
 )
 
 type DependencyManager struct {

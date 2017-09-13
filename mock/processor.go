@@ -1,8 +1,8 @@
 package mock
 
 import (
-	"github.com/tychoish/anser/db"
-	"github.com/tychoish/anser/model"
+	"github.com/mongodb/anser/db"
+	"github.com/mongodb/anser/model"
 )
 
 type Processor struct {

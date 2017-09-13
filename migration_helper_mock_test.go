@@ -3,9 +3,9 @@ package anser
 import (
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/grip"
-	"github.com/tychoish/anser/db"
-	"github.com/tychoish/anser/mock"
-	"github.com/tychoish/anser/model"
+	"github.com/mongodb/anser/db"
+	"github.com/mongodb/anser/mock"
+	"github.com/mongodb/anser/model"
 )
 
 // this has to be implemeneted in the anser package because of the

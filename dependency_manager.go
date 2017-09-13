@@ -12,8 +12,8 @@ import (
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
-	"github.com/tychoish/anser/db"
-	"github.com/tychoish/anser/model"
+	"github.com/mongodb/anser/db"
+	"github.com/mongodb/anser/model"
 	"gopkg.in/mgo.v2/bson"
 )
 
