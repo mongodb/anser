@@ -60,3 +60,6 @@ type Results interface {
 	One(interface{}) error
 	Iter() Iterator
 }
+
+// Document is, like bson.M, a wrapper for an un-ordered map type
+type Document map[string]interface{}
