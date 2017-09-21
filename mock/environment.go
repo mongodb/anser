@@ -3,9 +3,10 @@ package mock
 import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
-	"github.com/pkg/errors"
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/anser/model"
+	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 type Environment struct {
@@ -16,6 +17,7 @@ type Environment struct {
 	MigrationRegistry map[string]db.MigrationOperation
 	ProcessorRegistry map[string]db.Processor
 	DependecyManagers map[string]*DependencyManager
+	Closers           []func() error
 	IsSetup           bool
 	SetupError        error
 	SessionError      error
@@ -103,4 +105,13 @@ func (e *Environment) NewDependencyManager(n string, q map[string]interface{}, n
 	}
 
 	return e.DependecyManagers[n]
+}
+
+func (e *Environment) RegisterCloser(closer func() error) { e.Closers = append(e.Closers, closer) }
+func (e *Environment) Close() error {
+	catcher := grip.NewSimpleCatcher()
+	for _, closer := range e.Closers {
+		catcher.Add(closer())
+	}
+	return catcher.Resolve()
 }

@@ -18,9 +18,10 @@ import (
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
-	"github.com/pkg/errors"
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/anser/model"
+	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 	mgo "gopkg.in/mgo.v2"
 )
 
@@ -58,6 +59,8 @@ type Environment interface {
 	RegisterDocumentProcessor(string, db.Processor) error
 	GetDocumentProcessor(string) (db.Processor, bool)
 	NewDependencyManager(string, map[string]interface{}, model.Namespace) dependency.Manager
+	RegisterCloser(func() error)
+	Close() error
 }
 
 // GetEnvironment returns the global environment object. Because this
@@ -72,6 +75,7 @@ type envState struct {
 	deps       model.DependencyNetworker
 	migrations map[string]db.MigrationOperation
 	processor  map[string]db.Processor
+	closers    []func() error
 	isSetup    bool
 	mu         sync.RWMutex
 }
@@ -200,4 +204,32 @@ func (e *envState) NewDependencyManager(migrationID string, query map[string]int
 	d.NS = ns
 
 	return d
+}
+
+func (e *envState) RegisterCloser(closer func() error) {
+	if closer == nil {
+		return
+	}
+
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	e.closers = append(e.closers, closer)
+}
+
+func (e *envState) Close() error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	grip.Noticef("closing %d resources registered in the anser environment", len(e.closers))
+
+	catcher := grip.NewSimpleCatcher()
+	for _, closer := range e.closers {
+		catcher.Add(closer())
+	}
+
+	if catcher.HasErrors() {
+		grip.Warningf("encountered %d errors closingoanser resources, out of %d", catcher.Len(), len(e.closers))
+	}
+
+	return catcher.Resolve()
 }
