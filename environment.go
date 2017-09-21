@@ -34,12 +34,7 @@ var globalEnv *envState
 
 var dialTimeout = 10 * time.Second
 
-func init() {
-	globalEnv = &envState{
-		migrations: make(map[string]db.MigrationOperation),
-		processor:  make(map[string]db.Processor),
-	}
-}
+func init() { ResetEnvironment() }
 
 // Environment exposes the execution environment for the migration
 // utility, and is the method by which, potentially serialized job
@@ -67,6 +62,16 @@ type Environment interface {
 // produces a pointer to the global object, make sure that you have a
 // way to replace it with a mock as needed for testing.
 func GetEnvironment() Environment { return globalEnv }
+
+// ResetEnvironment resets the global environment object. Use this
+// only in testing (and only when you must.) It is not safe for
+// concurrent use.
+func ResetEnvironment() {
+	globalEnv = &envState{
+		migrations: make(map[string]db.MigrationOperation),
+		processor:  make(map[string]db.Processor),
+	}
+}
 
 type envState struct {
 	queue      amboy.Queue
