@@ -1,8 +1,7 @@
 package db
 
 import (
-	"errors"
-
+	"github.com/pkg/errors"
 	mgo "gopkg.in/mgo.v2"
 )
 
