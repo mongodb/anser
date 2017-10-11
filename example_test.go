@@ -9,10 +9,6 @@ import (
 	"github.com/mongodb/amboy/queue/driver"
 	"github.com/mongodb/anser/model"
 	"github.com/stretchr/testify/assert"
-<<<<<<< HEAD
-	"golang.org/x/net/context"
-=======
->>>>>>> MAKE-273: use standard library contexts
 )
 
 // proofOfConcept is a simple mock "main" to demonstrate how you could
