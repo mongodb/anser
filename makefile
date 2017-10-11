@@ -26,6 +26,7 @@ deps += github.com/pkg/errors
 deps += golang.org/x/net/context
 deps += gopkg.in/mgo.v2
 deps += github.com/stretchr/testify
+deps += github.com/tychoish/tarjan
 # end project dependencies
 
 
