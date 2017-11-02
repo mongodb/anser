@@ -66,13 +66,12 @@ func addMigrationJobs(ctx context.Context, q amboy.Queue, dryRun bool, limit int
 				continue
 			}
 
-			if limit > 0 && count+1 >= limit {
+			if limit > 0 && count >= limit {
 				return count, catcher.Resolve()
 			}
 			catcher.Add(q.Put(j))
+			count++
 		}
-
-		count++
 	}
 
 	grip.Infof("added %d migration operations", count)
