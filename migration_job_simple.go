@@ -45,6 +45,7 @@ type simpleMigrationJob struct {
 func (j *simpleMigrationJob) Run() {
 	grip.Info(message.Fields{
 		"message":   "starting migration",
+		"operation": "simple",
 		"migration": j.Definition.Migration,
 		"target":    j.Definition.ID,
 		"id":        j.ID(),

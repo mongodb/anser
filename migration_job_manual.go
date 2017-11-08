@@ -45,6 +45,7 @@ type manualMigrationJob struct {
 func (j *manualMigrationJob) Run() {
 	grip.Info(message.Fields{
 		"message":   "starting migration",
+		"operation": "manual",
 		"migration": j.Definition.Migration,
 		"target":    j.Definition.ID,
 		"id":        j.ID(),
