@@ -81,15 +81,17 @@ func (e *migrationBase) FinishMigration(name string, j *job.Base) {
 	if err != nil {
 		j.AddError(err)
 		grip.Warning(message.Fields{
-			"message":  "encountered problem saving migration metadata",
+			"message":  "encountered problem saving migration event",
+			"name":     name,
 			"error":    err.Error(),
 			"metadata": meta,
 		})
 		return
 	}
 
-	grip.Info(message.Fields{
-		"message":  "completed migration",
+	grip.Debug(message.Fields{
+		"message":  "completed operation",
+		"name":     name,
 		"metadata": meta,
 	})
 }
