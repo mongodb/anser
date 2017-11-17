@@ -14,7 +14,6 @@ package anser
 
 import (
 	"sync"
-	"time"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -22,7 +21,6 @@ import (
 	"github.com/mongodb/anser/model"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	mgo "gopkg.in/mgo.v2"
 )
 
 const (
@@ -31,8 +29,6 @@ const (
 )
 
 var globalEnv *envState
-
-var dialTimeout = 10 * time.Second
 
 func init() { ResetEnvironment() }
 
@@ -75,8 +71,8 @@ func ResetEnvironment() {
 
 type envState struct {
 	queue      amboy.Queue
-	session    *mgo.Session
 	metadataNS model.Namespace
+	session    db.Session
 	deps       model.DependencyNetworker
 	migrations map[string]db.MigrationOperation
 	processor  map[string]db.Processor
@@ -85,7 +81,7 @@ type envState struct {
 	mu         sync.RWMutex
 }
 
-func (e *envState) Setup(q amboy.Queue, mongodbURI string) error {
+func (e *envState) Setup(q amboy.Queue, session db.Session) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
@@ -93,19 +89,16 @@ func (e *envState) Setup(q amboy.Queue, mongodbURI string) error {
 		return errors.New("reconfiguring a queue is not supported")
 	}
 
-	session, err := mgo.DialWithTimeout(mongodbURI, dialTimeout)
-	if err != nil {
-		return errors.Wrap(err, "problem establishing connection")
-	}
-
 	if !q.Started() {
 		return errors.New("configuring anser environment with a non-running queue")
 	}
 
-	dbName := session.DB("").Name
-	if dbName == "test" {
+	dbName := session.DB("").Name()
+	if dbName == "test" || dbName == "" {
 		dbName = defaultAnserDB
 	}
+
+	e.RegisterCloser(func() error { session.Close() })
 
 	e.queue = q
 	e.session = session
@@ -125,7 +118,7 @@ func (e *envState) GetSession() (db.Session, error) {
 		return nil, errors.New("no session defined")
 	}
 
-	return db.WrapSession(e.session.Clone()), nil
+	return e.session.Copy(), nil
 }
 
 func (e *envState) GetQueue() (amboy.Queue, error) {
