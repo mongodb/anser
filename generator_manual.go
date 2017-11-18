@@ -20,7 +20,7 @@ func init() {
 
 func NewManualMigrationGenerator(e Environment, opts model.GeneratorOptions, opName string) Generator {
 	j := makeManualGenerator()
-	j.SetDependency(generatorDependency(opts))
+	j.SetDependency(generatorDependency(e, opts))
 	j.SetID(opts.JobID)
 	j.MigrationHelper = NewMigrationHelper(e)
 	j.NS = opts.NS
@@ -55,7 +55,7 @@ type manualMigrationGenerator struct {
 }
 
 func (j *manualMigrationGenerator) Run() {
-	defer j.MarkComplete()
+	defer j.FinishMigration(j.ID(), &j.Base)
 
 	env := j.Env()
 
@@ -101,7 +101,7 @@ func (j *manualMigrationGenerator) generateJobs(env Environment, iter db.Iterato
 			Namespace:     j.NS,
 		}).(*manualMigrationJob)
 
-		m.SetDependency(env.NewDependencyManager(j.ID(), j.NS))
+		m.SetDependency(env.NewDependencyManager(j.ID()))
 		m.SetID(fmt.Sprintf("%s.%v.%d", j.ID(), doc.ID, len(ids)))
 		ids = append(ids, m.ID())
 		j.Migrations = append(j.Migrations, m)

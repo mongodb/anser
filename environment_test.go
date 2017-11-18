@@ -8,7 +8,6 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/anser/db"
-	"github.com/mongodb/anser/model"
 	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -148,14 +147,11 @@ func (s *EnvImplSuite) TestDocumentProcessor() {
 }
 
 func (s *EnvImplSuite) TestDependencyNetworkConstructor() {
-	dep := s.env.NewDependencyManager("foo", model.Namespace{"db", "coll"})
+	dep := s.env.NewDependencyManager("foo")
 
 	s.NotNil(dep)
 	mdep := dep.(*migrationDependency)
 	s.Equal(mdep.Env(), s.env)
-	s.Len(mdep.Query, 0)
-	s.Equal(mdep.NS.DB, "db")
-	s.Equal(mdep.NS.Collection, "coll")
 	s.Equal(mdep.MigrationID, "foo")
 }
 

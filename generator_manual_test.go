@@ -82,7 +82,6 @@ func TestManualMigrationGenerator(t *testing.T) {
 		NewManualMigration(env, model.Manual{}).(*manualMigrationJob),
 		NewManualMigration(env, model.Manual{}).(*manualMigrationJob),
 		NewManualMigration(env, model.Manual{}).(*manualMigrationJob),
-		NewManualMigration(env, model.Manual{}).(*manualMigrationJob),
 	}
 	counter := 0
 	for migration := range job.Jobs() {

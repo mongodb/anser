@@ -28,7 +28,7 @@ func (s *ApplicationSuite) SetupSuite()    {}
 func (s *ApplicationSuite) TearDownSuite() {}
 func (s *ApplicationSuite) SetupTest() {
 	s.app = &Application{}
-	s.env = &mock.Environment{}
+	s.env = mock.NewEnvironment()
 }
 func (s *ApplicationSuite) TearDownTest() {}
 
