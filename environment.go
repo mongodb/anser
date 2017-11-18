@@ -40,7 +40,7 @@ func init() { ResetEnvironment() }
 // Implementations should be thread-safe, and are not required to be
 // reconfigurable after their initial configuration.
 type Environment interface {
-	Setup(amboy.Queue, string) error
+	Setup(amboy.Queue, db.Session) error
 	GetSession() (db.Session, error)
 	GetQueue() (amboy.Queue, error)
 	GetDependencyNetwork() (model.DependencyNetworker, error)
@@ -82,6 +82,10 @@ type envState struct {
 }
 
 func (e *envState) Setup(q amboy.Queue, session db.Session) error {
+	if session == nil {
+		return errors.New("cannot use a nil session")
+	}
+
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
@@ -98,8 +102,7 @@ func (e *envState) Setup(q amboy.Queue, session db.Session) error {
 		dbName = defaultAnserDB
 	}
 
-	e.RegisterCloser(func() error { session.Close() })
-
+	e.closers = append(e.closers, func() error { session.Close(); return nil })
 	e.queue = q
 	e.session = session
 	e.metadataNS.Collection = defaultMetadataCollection
