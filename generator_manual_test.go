@@ -88,7 +88,7 @@ func TestManualMigrationGenerator(t *testing.T) {
 		assert.NotNil(migration)
 		counter++
 	}
-	assert.Equal(counter, 3)
+	assert.Equal(3, counter)
 
 	// make sure that we generate the jobs we would expect to:
 	job = factory().(*manualMigrationGenerator)
