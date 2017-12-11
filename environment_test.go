@@ -2,6 +2,7 @@ package anser
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -32,7 +33,7 @@ func TestEnvImplSuite(t *testing.T) {
 	suite.Run(t, new(EnvImplSuite))
 }
 
-func (s *EnvImplSuite) SetupSuite() {
+func (s *EnvImplSuite) SetupTest() {
 	ctx, cancel := context.WithCancel(context.Background())
 	s.q = queue.NewLocalUnordered(4)
 	s.cancel = cancel
@@ -43,13 +44,7 @@ func (s *EnvImplSuite) SetupSuite() {
 	s.session = db.WrapSession(mgoses)
 
 	s.Require().Equal(globalEnv, GetEnvironment())
-}
 
-func (s *EnvImplSuite) TearDownSuite() {
-	s.cancel()
-}
-
-func (s *EnvImplSuite) SetupTest() {
 	s.env = &envState{
 		migrations: make(map[string]db.MigrationOperation),
 		processor:  make(map[string]db.Processor),
@@ -63,6 +58,10 @@ func (s *EnvImplSuite) SetupTest() {
 	s.Equal(s.env.metadataNS.DB, defaultAnserDB)
 	s.Equal(s.env.metadataNS.Collection, defaultMetadataCollection)
 	s.Equal(s.env.MetadataNamespace(), s.env.metadataNS)
+}
+
+func (s *EnvImplSuite) TearDownTest() {
+	s.cancel()
 }
 
 func (s *EnvImplSuite) TestCallingSetupMultipleTimesErrors() {
@@ -163,6 +162,32 @@ func (s *EnvImplSuite) TestDependencyNetworkConstructor() {
 	mdep := dep.(*migrationDependency)
 	s.Equal(mdep.Env(), s.env)
 	s.Equal(mdep.MigrationID, "foo")
+}
+
+func (s *EnvImplSuite) TestRegisterCloser() {
+	s.Len(s.env.closers, 1)
+	s.env.RegisterCloser(nil)
+	s.Len(s.env.closers, 1)
+	s.env.RegisterCloser(func() error { return nil })
+	s.Len(s.env.closers, 2)
+
+	s.env.RegisterCloser(func() error { return nil })
+	s.Len(s.env.closers, 3)
+
+	s.NoError(s.env.Close())
+
+	s.env.RegisterCloser(func() error { return errors.New("foo") })
+	s.Len(s.env.closers, 4)
+
+	s.Error(s.env.Close())
+}
+
+func (s *EnvImplSuite) TestCloseEncountersError() {
+	s.Len(s.env.closers, 1)
+	s.env.RegisterCloser(func() error { return errors.New("foo") })
+	s.Len(s.env.closers, 2)
+
+	s.Error(s.env.Close())
 }
 
 func TestUninitializedEnvErrors(t *testing.T) {
