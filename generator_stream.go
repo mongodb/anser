@@ -10,6 +10,7 @@ import (
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/anser/model"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -108,6 +109,14 @@ func (j *streamMigrationGenerator) generateJobs(env Environment, iter db.Iterato
 		m.SetID(fmt.Sprintf("%s.%v.%d", j.ID(), doc.ID, len(ids)))
 		ids = append(ids, m.ID())
 		j.Migrations = append(j.Migrations, m)
+
+		grip.Debug(message.Fields{
+			"ns":  j.NS,
+			"id":  m.ID(),
+			"doc": doc.ID,
+			"num": count,
+		})
+
 		if j.Limit > 0 && count >= j.Limit {
 			break
 		}

@@ -10,6 +10,7 @@ import (
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/anser/model"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -96,9 +97,7 @@ func (j *manualMigrationGenerator) generateJobs(env Environment, iter db.Iterato
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	count := 0
-	grip.Info("before next")
 	for iter.Next(&doc) {
-		grip.Info("in next")
 		count++
 		m := NewManualMigration(env, model.Manual{
 			ID:            doc.ID,
@@ -111,6 +110,13 @@ func (j *manualMigrationGenerator) generateJobs(env Environment, iter db.Iterato
 		m.SetID(fmt.Sprintf("%s.%v.%d", j.ID(), doc.ID, len(ids)))
 		ids = append(ids, m.ID())
 		j.Migrations = append(j.Migrations, m)
+
+		grip.Debug(message.Fields{
+			"ns":  j.NS,
+			"id":  m.ID(),
+			"doc": doc.ID,
+			"num": count,
+		})
 
 		if j.Limit > 0 && count >= j.Limit {
 			break
