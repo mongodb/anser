@@ -103,6 +103,7 @@ func (j *streamMigrationGenerator) generateJobs(env Environment, iter db.Iterato
 			ProcessorName: j.ProcessorName,
 			Migration:     j.ID(),
 			Namespace:     j.NS,
+			Query:         j.Query,
 		}).(*streamMigrationJob)
 
 		m.SetDependency(env.NewDependencyManager(j.ID()))
