@@ -38,7 +38,6 @@ func makeStreamGenerator() *streamMigrationGenerator {
 			JobType: amboy.JobType{
 				Name:    "stream-migration-generator",
 				Version: 0,
-				Format:  amboy.BSON,
 			},
 		},
 	}
