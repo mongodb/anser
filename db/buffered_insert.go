@@ -163,6 +163,9 @@ bufferLoop:
 					buf = []interface{}{}
 				}
 				f <- err
+				if !timer.Stop() {
+					<-timer.C
+				}
 				timer.Reset(bi.opts.Duration)
 			}
 
