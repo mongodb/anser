@@ -15,6 +15,7 @@ import (
 type BufferedInsertSuite struct {
 	dbname  string
 	session *mgo.Session
+	uuid    uuid.UUID
 	db      Database
 	bi      *anserBufInsertsImpl
 	suite.Suite
@@ -25,8 +26,10 @@ func TestBufferedInsertSuite(t *testing.T) {
 }
 
 func (s *BufferedInsertSuite) SetupSuite() {
-	s.dbname = fmt.Sprintf("anser_%s", uuid.NewV4())
 	var err error
+	s.uuid, err = uuid.NewV4()
+	s.Require().NoError(err)
+	s.dbname = fmt.Sprintf("anser_%s", s.uuid)
 	s.session, err = mgo.Dial("mongodb://localhost:27017")
 	s.Require().NoError(err)
 	s.db = WrapSession(s.session).DB(s.dbname)
@@ -70,7 +73,7 @@ func (s *BufferedInsertSuite) TestAppendErrorsForNilDocuments() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	coll := uuid.NewV4().String()
+	coll := s.uuid.String()
 	s.kickstart(ctx, coll)
 	defer s.takedown(coll)
 
@@ -90,7 +93,7 @@ func (s *BufferedInsertSuite) TestAppendErrorsForNilDocuments() {
 
 func (s *BufferedInsertSuite) TestBasicInsertsBufferDoesNotFlushOnCancel() {
 	ctx, cancel := context.WithCancel(context.Background())
-	coll := uuid.NewV4().String()
+	coll := s.uuid.String()
 	s.kickstart(ctx, coll)
 	defer s.takedown(coll)
 
@@ -107,7 +110,7 @@ func (s *BufferedInsertSuite) TestBasicInsertsBufferDoesNotFlushOnCancel() {
 func (s *BufferedInsertSuite) TestBufferFlushes() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	coll := uuid.NewV4().String()
+	coll := s.uuid.String()
 	s.kickstart(ctx, coll)
 	defer s.takedown(coll)
 
@@ -124,7 +127,7 @@ func (s *BufferedInsertSuite) TestBufferFlushes() {
 func (s *BufferedInsertSuite) TestCloserFlushes() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	coll := uuid.NewV4().String()
+	coll := s.uuid.String()
 	s.bi.opts.Count = 100000
 	s.bi.opts.Duration = time.Hour
 	s.kickstart(ctx, coll)
@@ -150,7 +153,7 @@ func (s *BufferedInsertSuite) TestShouldNoopUsusally() {
 	// now we try with a configured sender
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	coll := uuid.NewV4().String()
+	coll := s.uuid.String()
 	s.kickstart(ctx, coll)
 	// no teardown because nothing happens
 	// defer s.takedown(coll)
