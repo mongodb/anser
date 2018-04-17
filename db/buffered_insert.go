@@ -85,7 +85,7 @@ func NewBufferedInserter(ctx context.Context, db Database, opts BufferedInsertOp
 	}
 
 	bi := &anserBufInsertsImpl{
-		docs:    make(chan interface{}, opts.Count),
+		docs:    make(chan interface{}),
 		err:     make(chan error),
 		flusher: make(chan chan error),
 		closer:  make(chan chan error),
@@ -102,6 +102,10 @@ func NewBufferedInserter(ctx context.Context, db Database, opts BufferedInsertOp
 func NewBufferedSessionInserter(ctx context.Context, s *mgo.Session, opts BufferedInsertOptions) (BufferedInserter, error) {
 	if opts.DB == "" {
 		return nil, errors.New("must specify a database name when constructing a buffered insert handler")
+	}
+
+	if s == nil {
+		return nil, errors.New("must specify a non-nil database session")
 	}
 
 	session := WrapSession(s)
@@ -146,6 +150,12 @@ bufferLoop:
 				}
 			}
 		case f := <-bi.flusher:
+			select {
+			case last := <-bi.docs:
+				buf = append(buf, last)
+			default:
+			}
+
 			if len(buf) > 0 {
 				err := bi.db.C(bi.opts.Collection).Insert(buf...)
 				catcher.Add(err)
@@ -158,16 +168,18 @@ bufferLoop:
 
 			close(f)
 		case c := <-bi.closer:
-			last, ok := <-bi.docs
-			if ok {
+			close(bi.docs)
+			for last := range bi.docs {
 				buf = append(buf, last)
 			}
+
 			if len(buf) > 0 {
 				err := bi.db.C(bi.opts.Collection).Insert(buf...)
 				catcher.Add(err)
 			}
 			c <- catcher.Resolve()
 			close(c)
+			bi.cancel = nil
 			break bufferLoop
 		}
 	}
