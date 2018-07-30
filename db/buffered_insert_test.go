@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mongodb/grip"
 	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -59,7 +60,7 @@ func (s *BufferedInsertSuite) kickstart(ctx context.Context, collection string) 
 	}
 
 	if s.bi.opts.Duration == 0 {
-		s.bi.opts.Duration = 10 * time.Millisecond
+		s.bi.opts.Duration = 100 * time.Millisecond
 	}
 
 	go s.bi.start(ctx)
@@ -163,6 +164,88 @@ func (s *BufferedInsertSuite) TestShouldNoopUsusally() {
 	num, err := s.db.C(coll).Count()
 	s.NoError(err)
 	s.Equal(0, num)
+}
+
+func (s *BufferedInsertSuite) closeWithPendingDocuments() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	coll := s.uuid.String()
+	s.bi.opts.Count = 100000
+	s.bi.opts.Duration = time.Hour
+	s.kickstart(ctx, coll)
+	defer s.takedown(coll)
+
+	catcher := grip.NewBasicCatcher()
+	jobSize := 10
+	for i := 0; i < jobSize; i++ {
+		s.bi.Append(Document{"a": i})
+	}
+
+	s.NoError(s.bi.Close())
+	s.NoError(catcher.Resolve())
+
+	num, err := s.db.C(coll).Count()
+	s.NoError(err)
+	s.Equal(jobSize, num)
+}
+
+func (s *BufferedInsertSuite) flushWithPendingDocuments() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	coll := s.uuid.String()
+	s.bi.opts.Count = 100000
+	s.bi.opts.Duration = time.Hour
+	s.kickstart(ctx, coll)
+	defer s.takedown(coll)
+
+	catcher := grip.NewBasicCatcher()
+	jobSize := 10
+	for i := 0; i < jobSize; i++ {
+		s.bi.Append(Document{"a": i})
+	}
+
+	for i := 0; i < jobSize; i++ {
+		s.NoError(s.bi.Flush())
+	}
+
+	s.NoError(catcher.Resolve())
+
+	num, err := s.db.C(coll).Count()
+	s.NoError(err)
+	s.Equal(jobSize, num)
+}
+
+func (s *BufferedInsertSuite) TestCloseWithPending00() { s.closeWithPendingDocuments() }
+func (s *BufferedInsertSuite) TestCloseWithPending01() { s.closeWithPendingDocuments() }
+func (s *BufferedInsertSuite) TestCloseWithPending02() { s.closeWithPendingDocuments() }
+func (s *BufferedInsertSuite) TestCloseWithPending03() { s.closeWithPendingDocuments() }
+func (s *BufferedInsertSuite) TestCloseWithPending04() { s.closeWithPendingDocuments() }
+
+func (s *BufferedInsertSuite) TestFlushWithPending00() { s.flushWithPendingDocuments() }
+func (s *BufferedInsertSuite) TestFlushWithPending01() { s.flushWithPendingDocuments() }
+func (s *BufferedInsertSuite) TestFlushWithPending02() { s.flushWithPendingDocuments() }
+func (s *BufferedInsertSuite) TestFlushWithPending03() { s.flushWithPendingDocuments() }
+func (s *BufferedInsertSuite) TestFlushWithPending04() { s.flushWithPendingDocuments() }
+
+func (s *BufferedInsertSuite) TestFlushBeforeTimerExpires() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	coll := s.uuid.String()
+	s.bi.opts.Count = 100000
+	s.bi.opts.Duration = time.Nanosecond
+	s.kickstart(ctx, coll)
+	defer s.takedown(coll)
+
+	jobSize := 100
+	for i := 0; i < jobSize; i++ {
+		s.bi.Append(Document{"a": i})
+	}
+
+	s.NoError(s.bi.Flush())
+
+	num, err := s.db.C(coll).Count()
+	s.NoError(err)
+	s.Equal(jobSize, num)
 }
 
 type BufInsertOptsSuite struct {
