@@ -16,11 +16,13 @@ type Session interface {
 type Database interface {
 	Name() string
 	C(string) Collection
+	DropDatabase() error
 }
 
 // Collection provides access to the common query functionality of the
 // mgo.Collection type.
 type Collection interface {
+	DropCollection() error
 	Pipe(interface{}) Results
 	Find(interface{}) Query
 	FindId(interface{}) Query
