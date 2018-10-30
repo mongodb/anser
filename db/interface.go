@@ -36,6 +36,7 @@ type Collection interface {
 	Remove(interface{}) error
 	RemoveId(interface{}) error
 	RemoveAll(interface{}) (*ChangeInfo, error)
+	Bulk() Bulk
 }
 
 type Query interface {
@@ -46,6 +47,21 @@ type Query interface {
 	Sort(...string) Query
 
 	Results
+}
+
+type Bulk interface {
+	Insert(...interface{})
+	Remove(...interface{})
+	Update(...interface{})
+	UpdateAll(...interface{})
+	Upsert(...interface{})
+	Unordered()
+	Run() (*BulkResult, error)
+}
+
+type BulkResult struct {
+	Matched  int
+	Modified int
 }
 
 // Iterator is a more narrow subset of mgo's Iter type that
