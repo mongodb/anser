@@ -36,7 +36,7 @@ bufferLoop:
 		select {
 		case <-ctx.Done():
 			if ops > 0 {
-				catcher.Add(errors.Errorf("buffered upsert has %d pending inserts", ops))
+				catcher.Add(errors.Errorf("buffered upsert has %d pending operations", ops))
 			}
 
 			bu.err <- catcher.Resolve()
@@ -118,70 +118,41 @@ func (bu *anserBufUpsertImpl) Append(doc interface{}) error {
 		return errors.New("cannot insert a nil document")
 	}
 
-	switch d := doc.(type) {
-	case bson.RawD:
-		id, ok := getDocID(d)
-		if !ok {
-			return errors.New("could not find document ID")
-		}
+	id, ok := getDocID(doc)
+	if !ok {
+		return errors.New("could not find document ID")
+	}
 
-		bu.upserts <- upsertOp{
-			query:  Document{"_id": id},
-			record: d,
-		}
-	case map[string]interface{}:
-		id, ok := d["_id"]
-		if !ok {
-			return errors.New("could not find document ID")
-		}
-
-		bu.upserts <- upsertOp{
-			query:  Document{"_id": id},
-			record: d,
-		}
-	case Document:
-		id, ok := d["_id"]
-		if !ok {
-			return errors.New("could not find document ID")
-		}
-
-		bu.upserts <- upsertOp{
-			query:  Document{"_id": id},
-			record: d,
-		}
-	case bson.M:
-		id, ok := d["_id"]
-		if !ok {
-			return errors.New("could not find document ID")
-		}
-
-		bu.upserts <- upsertOp{
-			query:  Document{"_id": id},
-			record: d,
-		}
-	case map[string]string:
-		id, ok := d["_id"]
-		if !ok {
-			return errors.New("could not find document ID")
-		}
-
-		bu.upserts <- upsertOp{
-			query:  Document{"_id": id},
-			record: d,
-		}
-	default:
-		return errors.Errorf("document %T is not of a supported type", d)
+	bu.upserts <- upsertOp{
+		query:  Document{"_id": id},
+		record: doc,
 	}
 
 	return nil
 }
 
-func getDocID(rawDoc bson.RawD) (interface{}, bool) {
-	for _, raw := range rawDoc {
-		if raw.Name == "_id" {
-			return raw.Value, true
+func getDocID(doc interface{}) (interface{}, bool) {
+	switch d := doc.(type) {
+	case bson.RawD:
+		for _, raw := range d {
+			if raw.Name == "_id" {
+				return raw.Value, true
+			}
 		}
+	case map[string]interface{}:
+		id, ok := d["_id"]
+		return id, ok
+	case Document:
+		id, ok := d["_id"]
+		return id, ok
+	case bson.M:
+		id, ok := d["_id"]
+		return id, ok
+	case map[string]string:
+		id, ok := d["_id"]
+		return id, ok
 	}
+
 	return nil, false
 
 }
