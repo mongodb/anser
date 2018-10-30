@@ -149,6 +149,11 @@ bufferLoop:
 				if err == nil {
 					buf = []interface{}{}
 				}
+
+				if !timer.Stop() {
+					<-timer.C
+				}
+				timer.Reset(bi.opts.Duration)
 			}
 		case f := <-bi.flusher:
 			select {

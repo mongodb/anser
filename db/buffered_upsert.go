@@ -56,6 +56,12 @@ bufferLoop:
 				_, err := bulk.Run()
 				catcher.Add(err)
 				ops = 0
+
+				if !timer.Stop() {
+					<-timer.C
+				}
+
+				timer.Reset(bu.opts.Duration)
 			}
 		case f := <-bu.flusher:
 			select {
