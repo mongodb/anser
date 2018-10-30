@@ -248,25 +248,25 @@ func (s *BufferedInsertSuite) TestFlushBeforeTimerExpires() {
 	s.Equal(jobSize, num)
 }
 
-type BufInsertOptsSuite struct {
-	opts BufferedInsertOptions
+type BufWriteOptsSuite struct {
+	opts BufferedWriteOptions
 	suite.Suite
 }
 
-func TestBufInsertOptsSuite(t *testing.T) {
-	suite.Run(t, new(BufInsertOptsSuite))
+func TestBufWriteOptsSuite(t *testing.T) {
+	suite.Run(t, new(BufWriteOptsSuite))
 }
 
-func (s *BufInsertOptsSuite) SetupTest() {
-	s.opts = BufferedInsertOptions{}
+func (s *BufWriteOptsSuite) SetupTest() {
+	s.opts = BufferedWriteOptions{}
 }
 
-func (s *BufInsertOptsSuite) TestZeroValueIsNotValid() {
+func (s *BufWriteOptsSuite) TestZeroValueIsNotValid() {
 	s.Zero(s.opts)
 	s.Error(s.opts.Validate())
 }
 
-func (s *BufInsertOptsSuite) makeOptsValid() {
+func (s *BufWriteOptsSuite) makeOptsValid() {
 	s.opts.Collection = "foo"
 	s.opts.Count = 100
 	s.opts.Duration = time.Minute
@@ -274,13 +274,13 @@ func (s *BufInsertOptsSuite) makeOptsValid() {
 	s.Require().NoError(s.opts.Validate())
 }
 
-func (s *BufInsertOptsSuite) TestMissingCollectionIsNotValid() {
+func (s *BufWriteOptsSuite) TestMissingCollectionIsNotValid() {
 	s.makeOptsValid()
 	s.opts.Collection = ""
 	s.Error(s.opts.Validate())
 }
 
-func (s *BufInsertOptsSuite) TestCountMustBeAtLeast2() {
+func (s *BufWriteOptsSuite) TestCountMustBeAtLeast2() {
 	s.makeOptsValid()
 	s.opts.Count = 0
 	s.Error(s.opts.Validate())
@@ -296,7 +296,7 @@ func (s *BufInsertOptsSuite) TestCountMustBeAtLeast2() {
 
 }
 
-func (s *BufInsertOptsSuite) TestDurationMustBeReasonable() {
+func (s *BufWriteOptsSuite) TestDurationMustBeReasonable() {
 	s.makeOptsValid()
 	s.opts.Duration = 0
 	s.Error(s.opts.Validate())
@@ -314,7 +314,7 @@ func (s *BufInsertOptsSuite) TestDurationMustBeReasonable() {
 
 }
 
-func (s *BufInsertOptsSuite) TestDatabaseIsNotRequired() {
+func (s *BufWriteOptsSuite) TestDatabaseIsNotRequired() {
 	s.makeOptsValid()
 	s.NoError(s.opts.Validate())
 	s.Equal("", s.opts.DB)
@@ -327,8 +327,8 @@ func TestBufferedInsertConstructors(t *testing.T) {
 
 	var (
 		err  error
-		bi   BufferedInserter
-		opts BufferedInsertOptions
+		bi   BufferedWriter
+		opts BufferedWriteOptions
 	)
 
 	assert.Nil(bi)
@@ -340,7 +340,7 @@ func TestBufferedInsertConstructors(t *testing.T) {
 	assert.Nil(bi)
 
 	// test valid options construct non-nil object
-	opts = BufferedInsertOptions{
+	opts = BufferedWriteOptions{
 		Collection: "foo",
 		Count:      10,
 		Duration:   time.Second,
