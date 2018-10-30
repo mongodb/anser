@@ -8,6 +8,7 @@ import (
 
 	"github.com/mongodb/grip"
 	uuid "github.com/satori/go.uuid"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	mgo "gopkg.in/mgo.v2"
 )
@@ -244,4 +245,48 @@ func (s *BufferedUpsertSuite) TestFlushBeforeTimerExpires() {
 	num, err := s.db.C(coll).Count()
 	s.NoError(err)
 	s.Equal(jobSize, num)
+}
+
+func TestBufferedUpsertConstructors(t *testing.T) {
+	assert := assert.New(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	var (
+		err  error
+		bi   BufferedWriter
+		opts BufferedWriteOptions
+	)
+
+	assert.Nil(bi)
+	assert.Zero(opts)
+
+	// invalid options propagate error
+	bi, err = NewBufferedUpsertByID(ctx, nil, opts)
+	assert.Error(err)
+	assert.Nil(bi)
+
+	// test valid options construct non-nil object
+	opts = BufferedWriteOptions{
+		Collection: "foo",
+		Count:      10,
+		Duration:   time.Second,
+	}
+	bi, err = NewBufferedUpsertByID(ctx, nil, opts)
+	assert.Error(err)
+	assert.Nil(bi)
+
+	// from session should error without database names
+	bi, err = NewBufferedSessionUpsertByID(ctx, &mgo.Session{}, opts)
+	assert.Error(err)
+	assert.Nil(bi)
+
+	opts.DB = "bar"
+	bi, err = NewBufferedSessionUpsertByID(ctx, nil, opts)
+	assert.Error(err)
+	assert.Nil(bi)
+
+	bi, err = NewBufferedSessionUpsertByID(ctx, &mgo.Session{}, opts)
+	assert.NoError(err)
+	assert.NotNil(bi)
 }

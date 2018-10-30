@@ -6,6 +6,7 @@ import (
 
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -22,6 +23,45 @@ type anserBufUpsertImpl struct {
 type upsertOp struct {
 	query  interface{}
 	record interface{}
+}
+
+func NewBufferedUpsertByID(ctx context.Context, db Database, opts BufferedWriteOptions) (BufferedWriter, error) {
+	if err := opts.Validate(); err != nil {
+		return nil, errors.Wrap(err, "cannot construct buffered insert handler")
+	}
+
+	if db == nil {
+		return nil, errors.New("must not have a nil database")
+	}
+
+	bu := &anserBufUpsertImpl{
+		upserts: make(chan upsertOp),
+		err:     make(chan error),
+		flusher: make(chan chan error),
+		closer:  make(chan chan error),
+		db:      db,
+		opts:    opts,
+	}
+
+	ctx, bu.cancel = context.WithCancel(ctx)
+	go bu.start(ctx)
+
+	return bu, nil
+}
+
+func NewBufferedSessionUpsertByID(ctx context.Context, s *mgo.Session, opts BufferedWriteOptions) (BufferedWriter, error) {
+	if opts.DB == "" {
+		return nil, errors.New("must specify a database name when constructing a buffered upsert handler")
+	}
+
+	if s == nil {
+		return nil, errors.New("must specify a non-nil database session")
+	}
+
+	session := WrapSession(s)
+
+	return NewBufferedInserter(ctx, session.DB(opts.DB), opts)
+
 }
 
 func (bu *anserBufUpsertImpl) start(ctx context.Context) {
@@ -60,7 +100,6 @@ bufferLoop:
 				if !timer.Stop() {
 					<-timer.C
 				}
-
 				timer.Reset(bu.opts.Duration)
 			}
 		case f := <-bu.flusher:
