@@ -88,7 +88,6 @@ bufferLoop:
 				if err == nil {
 					bulk = bu.db.C(bu.opts.Collection).Bulk()
 				}
-				bulk = bu.db.C(bu.opts.Collection).Bulk()
 				ops = 0
 			}
 			timer.Reset(bu.opts.Duration)
