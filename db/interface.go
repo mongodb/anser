@@ -10,6 +10,7 @@ type Session interface {
 	Close()
 	DB(string) Database
 	SetSocketTimeout(time.Duration)
+	Error() error
 }
 
 // Database provides a very limited subset of the mgo.DB type.
