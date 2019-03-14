@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"reflect"
 	"strings"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/x/bsonx"
 )
 
 type sessionWrapper struct {
@@ -61,24 +63,142 @@ func (c *collectionWrapper) Pipe(p interface{}) Results {
 	}
 }
 
-func (c *collectionWrapper) Find(q interface{}) Query   { return nil }
-func (c *collectionWrapper) FindId(q interface{}) Query { return nil }
+func (c *collectionWrapper) Find(q interface{}) Query {
+	return &queryWrapper{
+		ctx:    c.ctx,
+		coll:   c.coll,
+		filter: q,
+	}
+}
 
-func (c *collectionWrapper) Count() (int, error)                         { return 0, nil }
-func (c *collectionWrapper) Insert(d ...interface{}) error               { return nil }
-func (c *collectionWrapper) Update(q interface{}, u interface{}) error   { return nil }
-func (c *collectionWrapper) UpdateId(q interface{}, u interface{}) error { return nil }
+func (c *collectionWrapper) FindId(id interface{}) Query {
+	return &queryWrapper{
+		ctx:    c.ctx,
+		coll:   c.coll,
+		filter: bson.D{{"_id", id}},
+	}
+}
+
+func (c *collectionWrapper) Count() (int, error) {
+	num, err := c.coll.CountDocuments(c.ctx, struct{}{})
+	return int(num), errors.WithStack(err)
+}
+
+func (c *collectionWrapper) Insert(d ...interface{}) error {
+	_, err := c.coll.InsertMany(c.ctx, d)
+	return errors.WithStack(err)
+}
+
+func (c *collectionWrapper) Remove(q interface{}) error {
+	_, err := c.coll.DeleteOne(c.ctx, q)
+	return errors.WithStack(err)
+}
+
+func (c *collectionWrapper) RemoveId(id interface{}) error {
+	_, err := c.coll.DeleteOne(c.ctx, bson.D{{"_id", id}})
+	return errors.WithStack(err)
+}
+
+func (c *collectionWrapper) RemoveAll(q interface{}) (*ChangeInfo, error) {
+	res, err := c.coll.DeleteMany(c.ctx, q)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return &ChangeInfo{Removed: int(res.DeletedCount)}, nil
+}
+
+func (c *collectionWrapper) Upsert(q interface{}, u interface{}) (*ChangeInfo, error) {
+	doc, err := transformDocument(u)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	var res *mongo.UpdateResult
+	if hasDollarKey(doc) {
+		res, err = c.coll.UpdateOne(c.ctx, q, u, options.Update().SetUpsert(true))
+	} else {
+		res, err = c.coll.ReplaceOne(c.ctx, q, u, options.Replace().SetUpsert(true))
+	}
+
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return &ChangeInfo{Updated: int(res.UpsertedCount) + int(res.ModifiedCount), UpsertedId: res.UpsertedID}, nil
+}
+
+func (c *collectionWrapper) UpsertId(id interface{}, u interface{}) (*ChangeInfo, error) {
+	doc, err := transformDocument(u)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	query := bson.D{{"_id", id}}
+
+	var res *mongo.UpdateResult
+	if hasDollarKey(doc) {
+		res, err = c.coll.UpdateOne(c.ctx, query, u, options.Update().SetUpsert(true))
+	} else {
+		res, err = c.coll.ReplaceOne(c.ctx, query, u, options.Replace().SetUpsert(true))
+	}
+
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return &ChangeInfo{Updated: int(res.UpsertedCount) + int(res.ModifiedCount), UpsertedId: res.UpsertedID}, nil
+}
+
+func (c *collectionWrapper) Update(q interface{}, u interface{}) error {
+	doc, err := transformDocument(u)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	if hasDollarKey(doc) {
+		_, err = c.coll.UpdateOne(c.ctx, q, u)
+	} else {
+		_, err = c.coll.ReplaceOne(c.ctx, q, u)
+	}
+
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	return nil
+}
+func (c *collectionWrapper) UpdateId(q interface{}, u interface{}) error {
+	doc, err := transformDocument(u)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	query := bson.D{{"_id", q}}
+
+	if hasDollarKey(doc) {
+		_, err = c.coll.UpdateOne(c.ctx, query, u)
+	} else {
+		_, err = c.coll.ReplaceOne(c.ctx, query, u)
+	}
+
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	return nil
+}
+
 func (c *collectionWrapper) UpdateAll(q interface{}, u interface{}) (*ChangeInfo, error) {
-	return nil, nil
+	res, err := c.coll.UpdateMany(c.ctx, q, u)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return &ChangeInfo{Updated: int(res.ModifiedCount)}, nil
 }
-func (c *collectionWrapper) Remove(q interface{}) error                               { return nil }
-func (c *collectionWrapper) RemoveId(q interface{}) error                             { return nil }
-func (c *collectionWrapper) RemoveAll(q interface{}) (*ChangeInfo, error)             { return nil, nil }
-func (c *collectionWrapper) Bulk() Bulk                                               { return nil }
-func (c *collectionWrapper) Upsert(q interface{}, u interface{}) (*ChangeInfo, error) { return nil, nil }
-func (c *collectionWrapper) UpsertId(q interface{}, u interface{}) (*ChangeInfo, error) {
-	return nil, nil
-}
+
+func (c *collectionWrapper) Bulk() Bulk { return nil }
 
 type resultsWrapper struct {
 	ctx    context.Context
@@ -86,8 +206,13 @@ type resultsWrapper struct {
 	err    error
 }
 
-func (r *resultsWrapper) All(interface{}) error { return nil }
-func (r *resultsWrapper) One(interface{}) error { return nil }
+func (r *resultsWrapper) All(result interface{}) error {
+	return errors.WithStack(cursorToArray(r.ctx, r.cursor, result))
+}
+
+func (r *resultsWrapper) One(result interface{}) error {
+	return errors.WithStack(cursorToOne(r.ctx, r.cursor, result))
+}
 
 func (r *resultsWrapper) Iter() Iterator {
 	catcher := grip.NewCatcher()
@@ -146,22 +271,13 @@ func (q *queryWrapper) Count() (int, error) {
 	return int(v), errors.WithStack(err)
 }
 
-func (q *queryWrapper) All(interface{}) error { return nil }
-func (q *queryWrapper) One(interface{}) error { return nil }
-
-func (q *queryWrapper) Iter() Iterator {
+func (q *queryWrapper) exec() error {
 	if q.cursor != nil {
-		return &iteratorWrapper{
-			ctx:     q.ctx,
-			cursor:  q.cursor,
-			catcher: grip.NewCatcher(),
-		}
+		return nil
 	}
 
-	catcher := grip.NewCatcher()
 	opts := options.Find()
 	opts.Projection = q.projection
-
 	if q.limit > 0 {
 		opts.SetLimit(int64(q.limit))
 	}
@@ -186,10 +302,116 @@ func (q *queryWrapper) Iter() Iterator {
 
 	var err error
 	q.cursor, err = q.coll.Find(q.ctx, q.filter, opts)
-	catcher.Add(err)
+
+	return errors.WithStack(err)
+}
+
+func (q *queryWrapper) All(result interface{}) error {
+	if err := q.exec(); err != nil {
+		return errors.WithStack(err)
+	}
+	return errors.WithStack(cursorToArray(q.ctx, q.cursor, result))
+}
+
+func (q *queryWrapper) One(result interface{}) error {
+	if err := q.exec(); err != nil {
+		return errors.WithStack(err)
+	}
+
+	return errors.WithStack(cursorToOne(q.ctx, q.cursor, result))
+}
+
+func (q *queryWrapper) Iter() Iterator {
+	if q.cursor != nil {
+		return &iteratorWrapper{
+			ctx:     q.ctx,
+			cursor:  q.cursor,
+			catcher: grip.NewCatcher(),
+		}
+	}
+
+	catcher := grip.NewCatcher()
+	catcher.Add(q.exec())
 	return &iteratorWrapper{
 		ctx:     q.ctx,
 		cursor:  q.cursor,
 		catcher: catcher,
 	}
+}
+
+func cursorToArray(ctx context.Context, iter *mongo.Cursor, result interface{}) error {
+	resultv := reflect.ValueOf(result)
+	if resultv.Kind() != reflect.Ptr || resultv.Elem().Kind() != reflect.Slice {
+		return errors.New("result argument must be a slice address")
+	}
+	slicev := resultv.Elem()
+	slicev = slicev.Slice(0, slicev.Cap())
+	elemt := slicev.Type().Elem()
+	catcher := grip.NewBasicCatcher()
+	i := 0
+	for {
+		if slicev.Len() == i {
+			elemp := reflect.New(elemt)
+			if !iter.Next(ctx) {
+				catcher.Add(iter.Decode(elemp.Interface()))
+				break
+			}
+
+			slicev = reflect.Append(slicev, elemp.Elem())
+			slicev = slicev.Slice(0, slicev.Cap())
+		} else {
+			if !iter.Next(ctx) {
+				catcher.Add(iter.Decode(slicev.Index(i).Addr().Interface()))
+				break
+			}
+		}
+		i++
+	}
+	resultv.Elem().Set(slicev.Slice(0, i))
+	catcher.Add(iter.Err())
+	catcher.Add(iter.Close(ctx))
+	return catcher.Resolve()
+}
+
+func cursorToOne(ctx context.Context, iter *mongo.Cursor, result interface{}) error {
+	if !iter.Next(ctx) {
+		return errors.WithStack(errNotFound)
+	}
+
+	return errors.WithStack(iter.Decode(result))
+}
+
+func transformDocument(val interface{}) (bsonx.Doc, error) {
+	if val == nil {
+		return nil, errors.WithStack(mongo.ErrNilDocument)
+	}
+
+	if doc, ok := val.(bsonx.Doc); ok {
+		return doc.Copy(), nil
+	}
+
+	if bs, ok := val.([]byte); ok {
+		// Slight optimization so we'll just use MarshalBSON and not go through the codec machinery.
+		val = bson.Raw(bs)
+	}
+
+	// TODO(skriptble): Use a pool of these instead.
+	buf := make([]byte, 0, 256)
+	b, err := bson.MarshalAppendWithRegistry(bson.DefaultRegistry, buf[:0], val)
+	if err != nil {
+		return nil, mongo.MarshalError{Value: val, Err: err}
+	}
+
+	return bsonx.ReadDoc(b)
+}
+
+func hasDollarKey(doc bsonx.Doc) bool {
+	if len(doc) == 0 {
+		return false
+	}
+	if !strings.HasPrefix(doc[0].Key, "$") {
+		return false
+	}
+
+	return true
 }
