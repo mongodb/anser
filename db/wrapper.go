@@ -14,6 +14,14 @@ import (
 	"go.mongodb.org/mongo-driver/x/bsonx"
 )
 
+func WrapClient(ctx context.Context, client *mongo.Client) Session {
+	return &sessionWrapper{
+		ctx:     ctx,
+		client:  client,
+		catcher: grip.NewCatcher(),
+	}
+}
+
 type sessionWrapper struct {
 	ctx     context.Context
 	client  *mongo.Client
