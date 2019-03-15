@@ -53,6 +53,7 @@ type Query interface {
 type Bulk interface {
 	Insert(...interface{})
 	Remove(...interface{})
+	RemoveAll(...interface{})
 	Update(...interface{})
 	UpdateAll(...interface{})
 	Upsert(...interface{})

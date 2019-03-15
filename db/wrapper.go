@@ -198,7 +198,105 @@ func (c *collectionWrapper) UpdateAll(q interface{}, u interface{}) (*ChangeInfo
 	return &ChangeInfo{Updated: int(res.ModifiedCount)}, nil
 }
 
-func (c *collectionWrapper) Bulk() Bulk { return nil }
+func (c *collectionWrapper) Bulk() Bulk {
+	return &bulkWrapper{
+		ctx:  c.ctx,
+		coll: c.coll,
+	}
+}
+
+type bulkWrapper struct {
+	ctx         context.Context
+	models      []mongo.WriteModel
+	coll        *mongo.Collection
+	isUnordered bool
+}
+
+func (b *bulkWrapper) Insert(docs ...interface{}) {
+	for _, d := range docs {
+		b.models = append(b.models, &mongo.InsertOneModel{
+			Document: d,
+		})
+	}
+}
+
+func (b *bulkWrapper) Remove(docs ...interface{}) {
+	for _, d := range docs {
+		b.models = append(b.models, &mongo.DeleteOneModel{
+			Filter: d,
+		})
+	}
+}
+
+func (b *bulkWrapper) RemoveAll(docs ...interface{}) {
+	for _, d := range docs {
+		b.models = append(b.models, &mongo.DeleteManyModel{
+			Filter: d,
+		})
+	}
+}
+
+func (b *bulkWrapper) Update(pairs ...interface{}) {
+	if len(pairs)%2 != 0 {
+		panic("bulk update requires an even number of parameters")
+	}
+
+	for i := 0; i < len(pairs); i += 2 {
+		selector := pairs[i]
+		if selector == nil {
+			selector = bson.D{}
+		}
+		b.models = append(b.models, &mongo.UpdateOneModel{
+			Filter: selector,
+			Update: pairs[i+1],
+		})
+	}
+}
+
+func (b *bulkWrapper) UpdateAll(pairs ...interface{}) {
+	if len(pairs)%2 != 0 {
+		panic("bulk update requires an even number of parameters")
+	}
+
+	for i := 0; i < len(pairs); i += 2 {
+		selector := pairs[i]
+		if selector == nil {
+			selector = bson.D{}
+		}
+		b.models = append(b.models, &mongo.UpdateManyModel{
+			Filter: selector,
+			Update: pairs[i+1],
+		})
+	}
+}
+
+func (b *bulkWrapper) Upsert(pairs ...interface{}) {
+	if len(pairs)%2 != 0 {
+		panic("Bulk.Update requires an even number of parameters")
+	}
+
+	for i := 0; i < len(pairs); i += 2 {
+		selector := pairs[i]
+		if selector == nil {
+			selector = bson.D{}
+		}
+		b.models = append(b.models, (&mongo.UpdateOneModel{
+			Filter: selector,
+			Update: pairs[i+1],
+		}).SetUpsert(true))
+	}
+}
+
+func (b *bulkWrapper) Unordered() { b.isUnordered = true }
+
+func (b *bulkWrapper) Run() (*BulkResult, error) {
+	res, err := b.coll.BulkWrite(b.ctx, b.models, options.BulkWrite().SetOrdered(!b.isUnordered))
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return &BulkResult{Matched: int(res.MatchedCount), Modified: int(res.ModifiedCount)}, nil
+}
 
 type resultsWrapper struct {
 	ctx    context.Context
