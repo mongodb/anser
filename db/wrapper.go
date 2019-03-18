@@ -313,11 +313,11 @@ type resultsWrapper struct {
 }
 
 func (r *resultsWrapper) All(result interface{}) error {
-	return errors.WithStack(cursorToArray(r.ctx, r.cursor, result))
+	return errors.WithStack(ResolveCursorAll(r.ctx, r.cursor, result))
 }
 
 func (r *resultsWrapper) One(result interface{}) error {
-	return errors.WithStack(cursorToOne(r.ctx, r.cursor, result))
+	return errors.WithStack(ResolveCursorOne(r.ctx, r.cursor, result))
 }
 
 func (r *resultsWrapper) Iter() Iterator {
@@ -416,7 +416,7 @@ func (q *queryWrapper) All(result interface{}) error {
 	if err := q.exec(); err != nil {
 		return errors.WithStack(err)
 	}
-	return errors.WithStack(cursorToArray(q.ctx, q.cursor, result))
+	return errors.WithStack(ResolveCursorAll(q.ctx, q.cursor, result))
 }
 
 func (q *queryWrapper) One(result interface{}) error {
@@ -424,7 +424,7 @@ func (q *queryWrapper) One(result interface{}) error {
 		return errors.WithStack(err)
 	}
 
-	return errors.WithStack(cursorToOne(q.ctx, q.cursor, result))
+	return errors.WithStack(ResolveCursorOne(q.ctx, q.cursor, result))
 }
 
 func (q *queryWrapper) Iter() Iterator {
@@ -445,7 +445,9 @@ func (q *queryWrapper) Iter() Iterator {
 	}
 }
 
-func cursorToArray(ctx context.Context, iter *mongo.Cursor, result interface{}) error {
+// ResolveCursorAll uses legacy mgo code to resolve a new driver's
+// cursor into an array.
+func ResolveCursorAll(ctx context.Context, iter *mongo.Cursor, result interface{}) error {
 	resultv := reflect.ValueOf(result)
 	if resultv.Kind() != reflect.Ptr || resultv.Elem().Kind() != reflect.Slice {
 		return errors.New("result argument must be a slice address")
@@ -479,7 +481,9 @@ func cursorToArray(ctx context.Context, iter *mongo.Cursor, result interface{}) 
 	return catcher.Resolve()
 }
 
-func cursorToOne(ctx context.Context, iter *mongo.Cursor, result interface{}) error {
+// ResolveCursorOne decodes the first result in a cursor, for use in
+// "FindOne" cases.
+func ResolveCursorOne(ctx context.Context, iter *mongo.Cursor, result interface{}) error {
 	if !iter.Next(ctx) {
 		return errors.WithStack(errNotFound)
 	}
