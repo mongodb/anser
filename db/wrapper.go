@@ -390,6 +390,10 @@ func (q *queryWrapper) exec() error {
 		return nil
 	}
 
+	if q.filter == nil {
+		q.filter = struct{}{}
+	}
+
 	opts := options.Find()
 	opts.Projection = q.projection
 	if q.limit > 0 {
