@@ -26,18 +26,26 @@ type sessionWrapper struct {
 	ctx     context.Context
 	client  *mongo.Client
 	catcher grip.Catcher
+	isClone bool
 }
 
-func (s *sessionWrapper) Clone() Session                   { return s }
-func (s *sessionWrapper) Copy() Session                    { return s }
-func (s *sessionWrapper) Close()                           { s.catcher.Add(s.client.Disconnect(s.ctx)) }
+func (s *sessionWrapper) Clone() Session                   { s.isClone = true; return s }
+func (s *sessionWrapper) Copy() Session                    { s.isClone = true; return s }
 func (s *sessionWrapper) Error() error                     { return s.catcher.Resolve() }
 func (s *sessionWrapper) SetSocketTimeout(d time.Duration) {}
+
 func (s *sessionWrapper) DB(name string) Database {
 	return &databaseWrapper{
 		ctx:      s.ctx,
 		database: s.client.Database(name),
 	}
+}
+
+func (s *sessionWrapper) Close() {
+	if s.isClone {
+		return
+	}
+	s.catcher.Add(s.client.Disconnect(s.ctx))
 }
 
 type databaseWrapper struct {
