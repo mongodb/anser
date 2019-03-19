@@ -463,23 +463,24 @@ func ResolveCursorAll(ctx context.Context, iter *mongo.Cursor, result interface{
 	slicev := resultv.Elem()
 	slicev = slicev.Slice(0, slicev.Cap())
 	elemt := slicev.Type().Elem()
-	catcher := grip.NewBasicCatcher()
+	catcher := grip.NewCatcher()
 	i := 0
 	for {
 		if slicev.Len() == i {
 			elemp := reflect.New(elemt)
 			if !iter.Next(ctx) {
-				catcher.Add(iter.Decode(elemp.Interface()))
 				break
 			}
 
+			catcher.Add(iter.Decode(elemp.Interface()))
 			slicev = reflect.Append(slicev, elemp.Elem())
 			slicev = slicev.Slice(0, slicev.Cap())
 		} else {
 			if !iter.Next(ctx) {
-				catcher.Add(iter.Decode(slicev.Index(i).Addr().Interface()))
 				break
 			}
+
+			catcher.Add(iter.Decode(slicev.Index(i).Addr().Interface()))
 		}
 		i++
 	}
