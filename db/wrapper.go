@@ -14,6 +14,8 @@ import (
 	"go.mongodb.org/mongo-driver/x/bsonx"
 )
 
+// WrapClient provides the anser database Session interface, which is
+// modeled on mgo's interface but based on new mongo.Client fundamentals.
 func WrapClient(ctx context.Context, client *mongo.Client) Session {
 	return &sessionWrapper{
 		ctx:     ctx,
@@ -91,7 +93,7 @@ func (c *collectionWrapper) FindId(id interface{}) Query {
 	return &queryWrapper{
 		ctx:    c.ctx,
 		coll:   c.coll,
-		filter: bson.D{{"_id", id}},
+		filter: bson.D{{Key: "_id", Value: id}},
 	}
 }
 
@@ -111,7 +113,7 @@ func (c *collectionWrapper) Remove(q interface{}) error {
 }
 
 func (c *collectionWrapper) RemoveId(id interface{}) error {
-	_, err := c.coll.DeleteOne(c.ctx, bson.D{{"_id", id}})
+	_, err := c.coll.DeleteOne(c.ctx, bson.D{{Key: "_id", Value: id}})
 	return errors.WithStack(err)
 }
 
@@ -150,7 +152,7 @@ func (c *collectionWrapper) UpsertId(id interface{}, u interface{}) (*ChangeInfo
 		return nil, errors.WithStack(err)
 	}
 
-	query := bson.D{{"_id", id}}
+	query := bson.D{{Key: "_id", Value: id}}
 
 	var res *mongo.UpdateResult
 	if hasDollarKey(doc) {
@@ -190,7 +192,7 @@ func (c *collectionWrapper) UpdateId(q interface{}, u interface{}) error {
 		return errors.WithStack(err)
 	}
 
-	query := bson.D{{"_id", q}}
+	query := bson.D{{Key: "_id", Value: q}}
 
 	if hasDollarKey(doc) {
 		_, err = c.coll.UpdateOne(c.ctx, query, u)
@@ -385,6 +387,51 @@ func (q *queryWrapper) Count() (int, error) {
 	return int(v), errors.WithStack(err)
 }
 
+func (q *queryWrapper) Apply(ch Change, result interface{}) (*ChangeInfo, error) {
+	if ch.Remove && ch.Update != nil {
+		return nil, errors.New("cannot delete and update in a findAndUpdate")
+	}
+
+	var res *mongo.SingleResult
+	out := &ChangeInfo{}
+	if ch.Remove {
+		if ch.ReturnNew {
+			return nil, errors.New("cannot return new with a delete operation")
+		}
+
+		res = q.coll.FindOneAndDelete(q.ctx, q.filter, options.FindOneAndDelete().SetProjection(q.projection).SetSort(getSort(q.sort)))
+		out.Removed++
+	} else if ch.Update != nil {
+		doc, err := transformDocument(ch.Update)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+
+		if hasDollarKey(doc) {
+			opts := options.FindOneAndUpdate().SetProjection(q.projection).SetUpsert(ch.Upsert).SetSort(getSort(q.sort)).SetReturnDocument(getFindAndModifyReturn(ch.ReturnNew))
+			res = q.coll.FindOneAndUpdate(q.ctx, q.filter, ch.Update, opts)
+		} else {
+			opts := options.FindOneAndReplace().SetProjection(q.projection).SetUpsert(ch.Upsert).SetSort(getSort(q.sort)).SetReturnDocument(getFindAndModifyReturn(ch.ReturnNew))
+			res = q.coll.FindOneAndReplace(q.ctx, q.filter, ch.Update, opts)
+		}
+		out.Updated++
+	} else {
+		return nil, errors.New("invalid change ")
+
+	}
+
+	if err := res.Err(); err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	if err := res.Decode(result); err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return out, nil
+
+}
+
 func (q *queryWrapper) exec() error {
 	if q.cursor != nil {
 		return nil
@@ -394,28 +441,13 @@ func (q *queryWrapper) exec() error {
 		q.filter = struct{}{}
 	}
 
-	opts := options.Find()
-	opts.Projection = q.projection
+	opts := options.Find().SetSort(getSort(q.sort)).SetProjection(q.projection)
 	if q.limit > 0 {
 		opts.SetLimit(int64(q.limit))
 	}
 
 	if q.skip > 0 {
 		opts.SetSkip(int64(q.skip))
-	}
-
-	if q.sort != nil {
-		sort := bson.D{}
-
-		for _, k := range q.sort {
-			if strings.HasPrefix(k, "-") {
-				sort = append(sort, bson.E{k[1:], -11})
-			} else {
-				sort = append(sort, bson.E{k, 1})
-			}
-		}
-
-		opts.SetSort(sort)
 	}
 
 	var err error
@@ -537,4 +569,29 @@ func hasDollarKey(doc bsonx.Doc) bool {
 	}
 
 	return true
+}
+
+func getSort(keys []string) bson.D {
+	if len(keys) == 0 {
+		return nil
+	}
+
+	sort := bson.D{}
+
+	for _, k := range keys {
+		if strings.HasPrefix(k, "-") {
+			sort = append(sort, bson.E{Key: k[1:], Value: -1})
+		} else {
+			sort = append(sort, bson.E{Key: k, Value: 1})
+		}
+	}
+
+	return sort
+}
+
+func getFindAndModifyReturn(returnNew bool) options.ReturnDocument {
+	if returnNew {
+		return options.After
+	}
+	return options.Before
 }
