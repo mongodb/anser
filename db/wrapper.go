@@ -72,7 +72,7 @@ type collectionWrapper struct {
 func (c *collectionWrapper) DropCollection() error { return errors.WithStack(c.coll.Drop(c.ctx)) }
 
 func (c *collectionWrapper) Pipe(p interface{}) Results {
-	cursor, err := c.coll.Aggregate(c.ctx, p)
+	cursor, err := c.coll.Aggregate(c.ctx, p, options.Aggregate().SetAllowDiskUse(true))
 
 	return &resultsWrapper{
 		err:    err,
@@ -399,7 +399,13 @@ func (q *queryWrapper) Apply(ch Change, result interface{}) (*ChangeInfo, error)
 			return nil, errors.New("cannot return new with a delete operation")
 		}
 
-		res = q.coll.FindOneAndDelete(q.ctx, q.filter, options.FindOneAndDelete().SetProjection(q.projection).SetSort(getSort(q.sort)))
+		opts := options.FindOneAndDelete().SetProjection(q.projection)
+		if q.sort != nil {
+			opts.SetSort(getSort(q.sort))
+		}
+
+		res = q.coll.FindOneAndDelete(q.ctx, q.filter, opts)
+
 		out.Removed++
 	} else if ch.Update != nil {
 		doc, err := transformDocument(ch.Update)
@@ -408,15 +414,21 @@ func (q *queryWrapper) Apply(ch Change, result interface{}) (*ChangeInfo, error)
 		}
 
 		if hasDollarKey(doc) {
-			opts := options.FindOneAndUpdate().SetProjection(q.projection).SetUpsert(ch.Upsert).SetSort(getSort(q.sort)).SetReturnDocument(getFindAndModifyReturn(ch.ReturnNew))
+			opts := options.FindOneAndUpdate().SetProjection(q.projection).SetUpsert(ch.Upsert).SetReturnDocument(getFindAndModifyReturn(ch.ReturnNew))
+			if q.sort != nil {
+				opts.SetSort(getSort(q.sort))
+			}
 			res = q.coll.FindOneAndUpdate(q.ctx, q.filter, ch.Update, opts)
 		} else {
-			opts := options.FindOneAndReplace().SetProjection(q.projection).SetUpsert(ch.Upsert).SetSort(getSort(q.sort)).SetReturnDocument(getFindAndModifyReturn(ch.ReturnNew))
+			opts := options.FindOneAndReplace().SetProjection(q.projection).SetUpsert(ch.Upsert).SetReturnDocument(getFindAndModifyReturn(ch.ReturnNew))
+			if q.sort != nil {
+				opts.SetSort(getSort(q.sort))
+			}
 			res = q.coll.FindOneAndReplace(q.ctx, q.filter, ch.Update, opts)
 		}
 		out.Updated++
 	} else {
-		return nil, errors.New("invalid change ")
+		return nil, errors.New("invalid options specified (no update or remove defined)")
 
 	}
 
@@ -441,16 +453,22 @@ func (q *queryWrapper) exec() error {
 		q.filter = struct{}{}
 	}
 
-	opts := options.Find().SetSort(getSort(q.sort)).SetProjection(q.projection)
+	opts := options.Find()
+	if q.projection != nil {
+		opts.SetProjection(q.projection)
+	}
+	if q.sort != nil {
+		opts.SetSort(getSort(q.sort))
+	}
 	if q.limit > 0 {
 		opts.SetLimit(int64(q.limit))
 	}
-
 	if q.skip > 0 {
 		opts.SetSkip(int64(q.skip))
 	}
 
 	var err error
+
 	q.cursor, err = q.coll.Find(q.ctx, q.filter, opts)
 
 	return errors.WithStack(err)
@@ -494,7 +512,7 @@ func (q *queryWrapper) Iter() Iterator {
 func ResolveCursorAll(ctx context.Context, iter *mongo.Cursor, result interface{}) error {
 	resultv := reflect.ValueOf(result)
 	if resultv.Kind() != reflect.Ptr || resultv.Elem().Kind() != reflect.Slice {
-		return errors.New("result argument must be a slice address")
+		return errors.Errorf("result argument must be a slice address '%T'", result)
 	}
 	slicev := resultv.Elem()
 	slicev = slicev.Slice(0, slicev.Cap())
@@ -505,6 +523,9 @@ func ResolveCursorAll(ctx context.Context, iter *mongo.Cursor, result interface{
 		if slicev.Len() == i {
 			elemp := reflect.New(elemt)
 			if !iter.Next(ctx) {
+				if i == 0 {
+					return nil
+				}
 				break
 			}
 
@@ -515,7 +536,6 @@ func ResolveCursorAll(ctx context.Context, iter *mongo.Cursor, result interface{
 			if !iter.Next(ctx) {
 				break
 			}
-
 			catcher.Add(iter.Decode(slicev.Index(i).Addr().Interface()))
 		}
 		i++
