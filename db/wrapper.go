@@ -103,7 +103,12 @@ func (c *collectionWrapper) Count() (int, error) {
 }
 
 func (c *collectionWrapper) Insert(d ...interface{}) error {
-	_, err := c.coll.InsertMany(c.ctx, d)
+	var err error
+	if len(d) == 1 {
+		_, err = c.coll.InsertOne(c.ctx, d[0])
+	} else {
+		_, err = c.coll.InsertMany(c.ctx, d)
+	}
 	return errors.WithStack(err)
 }
 
@@ -174,14 +179,19 @@ func (c *collectionWrapper) Update(q interface{}, u interface{}) error {
 		return errors.WithStack(err)
 	}
 
+	var res *mongo.UpdateResult
 	if hasDollarKey(doc) {
-		_, err = c.coll.UpdateOne(c.ctx, q, u)
+		res, err = c.coll.UpdateOne(c.ctx, q, u)
 	} else {
-		_, err = c.coll.ReplaceOne(c.ctx, q, u)
+		res, err = c.coll.ReplaceOne(c.ctx, q, u)
 	}
 
 	if err != nil {
 		return errors.WithStack(err)
+	}
+
+	if res.MatchedCount == 0 {
+		return errors.WithStack(errNotFound)
 	}
 
 	return nil
@@ -192,16 +202,21 @@ func (c *collectionWrapper) UpdateId(q interface{}, u interface{}) error {
 		return errors.WithStack(err)
 	}
 
-	query := bson.D{{Key: "_id", Value: q}}
+	query := bson.D{{"_id", q}}
 
+	var res *mongo.UpdateResult
 	if hasDollarKey(doc) {
-		_, err = c.coll.UpdateOne(c.ctx, query, u)
+		res, err = c.coll.UpdateOne(c.ctx, query, doc)
 	} else {
-		_, err = c.coll.ReplaceOne(c.ctx, query, u)
+		res, err = c.coll.ReplaceOne(c.ctx, query, doc)
 	}
 
 	if err != nil {
 		return errors.WithStack(err)
+	}
+
+	if res.MatchedCount == 0 {
+		return errors.WithStack(errNotFound)
 	}
 
 	return nil
@@ -414,6 +429,7 @@ func (q *queryWrapper) Apply(ch Change, result interface{}) (*ChangeInfo, error)
 		}
 
 		if hasDollarKey(doc) {
+
 			opts := options.FindOneAndUpdate().SetProjection(q.projection).SetUpsert(ch.Upsert).SetReturnDocument(getFindAndModifyReturn(ch.ReturnNew))
 			if q.sort != nil {
 				opts.SetSort(getSort(q.sort))
@@ -428,7 +444,7 @@ func (q *queryWrapper) Apply(ch Change, result interface{}) (*ChangeInfo, error)
 		}
 		out.Updated++
 	} else {
-		return nil, errors.New("invalid options specified (no update or remove defined)")
+		return nil, errors.New("invalid change defined")
 
 	}
 
