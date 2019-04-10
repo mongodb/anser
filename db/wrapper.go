@@ -576,7 +576,7 @@ func ResolveCursorAll(ctx context.Context, iter *mongo.Cursor, result interface{
 // "FindOne" cases.
 func ResolveCursorOne(ctx context.Context, iter *mongo.Cursor, result interface{}) error {
 	if iter == nil {
-		return errors.New("cannot  resolve result from cursor")
+		return errors.New("cannot resolve result from cursor")
 	}
 
 	if !iter.Next(ctx) {
@@ -636,6 +636,8 @@ func getSort(keys []string) bson.D {
 	for _, k := range keys {
 		if strings.HasPrefix(k, "-") {
 			sort = append(sort, bson.E{Key: k[1:], Value: -1})
+		} else if strings.HasPrefix(k, "+") {
+			sort = append(sort, bson.E{Key: k[1:], Value: 1})
 		} else {
 			sort = append(sort, bson.E{Key: k, Value: 1})
 		}
