@@ -575,11 +575,20 @@ func ResolveCursorAll(ctx context.Context, iter *mongo.Cursor, result interface{
 // ResolveCursorOne decodes the first result in a cursor, for use in
 // "FindOne" cases.
 func ResolveCursorOne(ctx context.Context, iter *mongo.Cursor, result interface{}) error {
+	if iter == nil {
+		return errors.New("cannot  resolve result from cursor")
+	}
+
 	if !iter.Next(ctx) {
 		return errors.WithStack(errNotFound)
 	}
 
-	return errors.WithStack(iter.Decode(result))
+	catcher := grip.NewCatcher()
+	catcher.Add(iter.Decode(result))
+	catcher.Add(iter.Err())
+	catcher.Add(iter.Close(ctx))
+
+	return errors.Wrap(catcher.Resolve(), "problem resolving result")
 }
 
 func transformDocument(val interface{}) (bsonx.Doc, error) {
