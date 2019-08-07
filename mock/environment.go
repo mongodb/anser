@@ -23,6 +23,9 @@ type Environment struct {
 	MigrationRegistry       map[string]client.MigrationOperation
 	ProcessorRegistry       map[string]client.Processor
 
+	ShouldPreferClient bool
+	PreferedSetup      interface{}
+
 	DependencyManagers map[string]*DependencyManager
 	Closers            []func() error
 	IsSetup            bool
@@ -160,3 +163,6 @@ func (e *Environment) Close() error {
 	}
 	return catcher.Resolve()
 }
+
+func (e *Environment) PreferClient() bool           { return e.ShouldPreferClient }
+func (e *Environment) SetPreferedDB(in interface{}) { e.PreferedSetup = in }

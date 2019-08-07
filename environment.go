@@ -22,6 +22,8 @@ import (
 	"github.com/mongodb/anser/model"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/mongo"
+	mgo "gopkg.in/mgo.v2"
 )
 
 const (
@@ -58,6 +60,9 @@ type Environment interface {
 	NewDependencyManager(string) dependency.Manager
 	RegisterCloser(func() error)
 	Close() error
+
+	SetPreferedDB(interface{})
+	PreferClient() bool
 }
 
 // GetEnvironment returns the global environment object. Because this
@@ -86,16 +91,17 @@ type processor struct {
 }
 
 type envState struct {
-	queue      amboy.Queue
-	metadataNS model.Namespace
-	session    db.Session
-	client     client.Client
-	deps       model.DependencyNetworker
-	migrations map[string]migrationOp
-	processor  map[string]processor
-	closers    []func() error
-	isSetup    bool
-	mu         sync.RWMutex
+	queue        amboy.Queue
+	metadataNS   model.Namespace
+	session      db.Session
+	client       client.Client
+	deps         model.DependencyNetworker
+	migrations   map[string]migrationOp
+	processor    map[string]processor
+	closers      []func() error
+	isSetup      bool
+	preferClient bool
+	mu           sync.RWMutex
 }
 
 func (e *envState) Setup(q amboy.Queue, cl client.Client, session db.Session) error {
@@ -313,4 +319,34 @@ func (e *envState) Close() error {
 	}
 
 	return catcher.Resolve()
+}
+
+func (e *envState) SetPreferedDB(in interface{}) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	switch in.(type) {
+	case db.Session:
+		e.preferClient = false
+	case client.Client:
+		e.preferClient = true
+	case *mongo.Client:
+		e.preferClient = true
+	case *mgo.Session:
+		e.preferClient = false
+	}
+}
+
+func (e *envState) PreferClient() bool {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	if e.client == nil && e.session != nil {
+		return false
+	}
+	if e.session == nil && e.client != nil {
+		return true
+	}
+
+	return e.preferClient
 }
