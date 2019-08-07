@@ -62,7 +62,7 @@ func TestSimpleMigrationJob(t *testing.T) {
 	job.Definition.Namespace = model.Namespace{DB: "foo", Collection: "bar"}
 	env.SessionError = nil
 	env.Session = mock.NewSession()
-	env.Session.DB("foo").C("bar").(*mock.Collection).FailWrites = true
+	env.Session.DB("foo").C("bar").(*mock.LegacyCollection).FailWrites = true
 	job.MigrationHelper = mh
 	job.Run(ctx)
 	assert.True(job.Status().Completed)
