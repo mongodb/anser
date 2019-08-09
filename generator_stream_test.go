@@ -73,7 +73,7 @@ func TestStreamMigrationGenerator(t *testing.T) {
 	job.NS = ns
 	job.MigrationHelper = mh
 	env.Session = mock.NewSession()
-	env.Session.DB("foo").C("bar").(*mock.Collection).QueryError = errors.New("query error")
+	env.Session.DB("foo").C("bar").(*mock.LegacyCollection).QueryError = errors.New("query error")
 	job.Run(ctx)
 	assert.True(job.Status().Completed)
 	if assert.True(job.HasErrors()) {
@@ -81,7 +81,7 @@ func TestStreamMigrationGenerator(t *testing.T) {
 		assert.Error(err)
 		assert.Contains(err.Error(), "query error")
 	}
-	env.Session.DB("foo").C("bar").(*mock.Collection).QueryError = nil // reset
+	env.Session.DB("foo").C("bar").(*mock.LegacyCollection).QueryError = nil // reset
 
 	// check job production
 	job.Migrations = []*streamMigrationJob{

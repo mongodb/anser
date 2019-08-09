@@ -45,8 +45,8 @@ func TestStreamMigrationJob(t *testing.T) {
 	}
 
 	// set up the processor
-	processor := &mock.Processor{}
-	env.ProcessorRegistry[processorTypeName] = processor
+	processor := &mock.LegacyProcessor{}
+	env.LegacyProcessorRegistry[processorTypeName] = processor
 
 	// reset for next case.
 	// now we find a poorly configured/implemented processor

@@ -48,12 +48,12 @@ func TestManualMigration(t *testing.T) {
 	if assert.True(job.HasErrors()) {
 		err = job.Error()
 		assert.Error(err)
-		assert.Contains(err.Error(), "could not find migration operation")
+		assert.Contains(err.Error(), "could not find migration named")
 	}
 
 	// set a migration job name
-	assert.NoError(env.RegisterManualMigrationOperation("passing", passingManualMigrationOp))
-	assert.NoError(env.RegisterManualMigrationOperation("failing", failingManualMigrationOp))
+	assert.NoError(env.RegisterLegacyManualMigrationOperation("passing", passingManualMigrationOp))
+	assert.NoError(env.RegisterLegacyManualMigrationOperation("failing", failingManualMigrationOp))
 
 	// reset, define a job but have the session acquisition fail
 	job = factory().(*manualMigrationJob)
@@ -95,7 +95,7 @@ func TestManualMigration(t *testing.T) {
 	job.Definition.Namespace = model.Namespace{DB: "foo", Collection: "bar"}
 	job.MigrationHelper = mh
 	env.Session = mock.NewSession()
-	env.Session.DB("foo").C("bar").(*mock.Collection).QueryError = errors.New("query error")
+	env.Session.DB("foo").C("bar").(*mock.LegacyCollection).QueryError = errors.New("query error")
 	job.Run(ctx)
 	assert.True(job.Status().Completed)
 	if assert.True(job.HasErrors()) {
