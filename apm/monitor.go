@@ -5,10 +5,29 @@ import (
 	"sync"
 	"time"
 
+	"github.com/mongodb/ftdc/bsonx"
 	"go.mongodb.org/mongo-driver/event"
 )
 
+type MonitorConfig struct {
+	NumWindows     int
+	WindowDuration time.Duration
+}
+
+func (c *MonitorConfig) Validate() error {
+	if c.NumWindows <= 0 {
+		c.NumWindows = 100
+	}
+	if c.WindowDuration < time.Minute {
+		c.WindowDuration = time.Minute
+	}
+
+	return nil
+}
+
 type Monitor struct {
+	config MonitorConfig
+
 	inProg     map[int64]eventKey
 	inProgLock sync.Mutex
 
@@ -37,6 +56,8 @@ type eventWindow struct {
 	timestamp time.Time
 	data      map[eventKey]*eventRecord
 }
+
+func (e eventWindow) export() *bsonx.Document { return nil }
 
 func (m *Monitor) handleStartedEvent(ctx context.Context, e *event.CommandStartedEvent) {
 	r := eventKey{
