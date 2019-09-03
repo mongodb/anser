@@ -37,7 +37,7 @@ func TestMigrationHelperSuite(t *testing.T) {
 func (s *MigrationHelperSuite) SetupSuite() {
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
-	s.queue = queue.NewLocalUnordered(4)
+	s.queue = queue.NewLocalLimitedSize(4, 256)
 	s.NoError(s.queue.Start(ctx))
 
 	ses, err := mgo.DialWithTimeout("mongodb://localhost:27017", 10*time.Millisecond)

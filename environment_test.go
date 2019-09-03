@@ -39,7 +39,7 @@ func TestEnvImplSuite(t *testing.T) {
 
 func (s *EnvImplSuite) SetupTest() {
 	ctx, cancel := context.WithCancel(context.Background())
-	s.q = queue.NewLocalUnordered(4)
+	s.q = queue.NewLocalLimitedSize(4, 256)
 	s.cancel = cancel
 	s.NoError(s.q.Start(ctx))
 
@@ -89,7 +89,7 @@ func (s *EnvImplSuite) TestUnstartedQueueCausesError() {
 	s.env.isSetup = false
 	s.env.queue = nil
 
-	s.Error(s.env.Setup(queue.NewLocalUnordered(2), s.client, s.session))
+	s.Error(s.env.Setup(queue.NewLocalLimitedSize(2, 256), s.client, s.session))
 	s.Nil(s.env.queue)
 	s.False(s.env.isSetup)
 }
