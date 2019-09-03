@@ -29,6 +29,7 @@ type Environment struct {
 	DependencyManagers map[string]*DependencyManager
 	Closers            []func() error
 	IsSetup            bool
+	ReturnNilClient    bool
 	SetupError         error
 	SessionError       error
 	ClientError        error
@@ -67,6 +68,15 @@ func (e *Environment) GetClient() (client.Client, error) {
 	if e.ClientError != nil {
 		return nil, e.ClientError
 	}
+
+	if e.ReturnNilClient {
+		return nil, nil
+	}
+
+	if e.Client == nil {
+		e.Client = NewClient()
+	}
+
 	return e.Client, nil
 
 }
