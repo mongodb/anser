@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/mongodb/ftdc/bsonx"
+	"github.com/mongodb/grip/message"
 	"go.mongodb.org/mongo-driver/event"
 )
 
@@ -155,7 +156,16 @@ func (m *Monitor) Rotate() {
 	defer m.windowsLock.Unlock()
 	m.windows = append(m.windows, m.rotateCurrent())
 
-	if len(m.windows) > 100 {
+	if len(m.windows) > m.config.NumWindows {
 		m.windows = m.windows[1:]
 	}
+}
+
+type ClientMonitor interface {
+	DriverAPM() event.CommandMonitor
+}
+
+type Event interface {
+	Message() message.Composer
+	Docum
 }
