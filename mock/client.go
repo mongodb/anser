@@ -5,6 +5,7 @@ import (
 
 	"github.com/mongodb/anser/client"
 	"github.com/mongodb/ftdc/bsonx"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type Client struct {
@@ -65,13 +66,13 @@ type Collection struct {
 }
 
 func (c *Collection) Name() string { return c.CollName }
-func (c *Collection) Aggregate(ctx context.Context, pipe interface{}) (client.Cursor, error) {
+func (c *Collection) Aggregate(ctx context.Context, pipe interface{}, opts ...*options.AggregateOptions) (client.Cursor, error) {
 	return nil, nil
 }
-func (c *Collection) Find(ctx context.Context, query interface{}) (client.Cursor, error) {
+func (c *Collection) Find(ctx context.Context, query interface{}, opts ...*options.FindOptions) (client.Cursor, error) {
 	return nil, nil
 }
-func (c *Collection) FindOne(ctx context.Context, query interface{}) client.SingleResult {
+func (c *Collection) FindOne(ctx context.Context, query interface{}, opts ...*options.FindOneOptions) client.SingleResult {
 	return c.SingleResult
 }
 func (c *Collection) InsertOne(ctx context.Context, doc interface{}) (*client.InsertOneResult, error) {

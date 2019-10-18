@@ -105,7 +105,7 @@ func TestManualMigrationGenerator(t *testing.T) {
 		},
 	}
 
-	ids := job.generateJobs(env, iter)
+	ids := job.generateLegacyJobs(env, iter)
 	for idx, id := range ids {
 		assert.True(strings.HasPrefix(id, "manual."))
 		assert.True(strings.HasSuffix(id, fmt.Sprintf(".%d", idx)))
