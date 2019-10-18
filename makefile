@@ -1,7 +1,7 @@
 # start project configuration
 name := anser
 buildDir := build
-packages := $(name) mock model db bsonutil
+packages := $(name) mock model db bsonutil client
 orgPath := github.com/mongodb
 projectPath := $(orgPath)/$(name)
 # end project configuration
@@ -22,6 +22,7 @@ gobin := $(shell which go)
 #   will be vendored eventually.
 deps := github.com/mongodb/amboy
 deps += github.com/mongodb/grip
+deps += github.com/mongodb/ftdc
 deps += github.com/pkg/errors
 deps += github.com/stretchr/testify
 deps += github.com/tychoish/tarjan
