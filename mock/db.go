@@ -159,12 +159,11 @@ func (i *Iterator) Close() error { return i.Error }
 func (i *Iterator) Err() error   { return i.Error }
 func (i *Iterator) Next(out interface{}) bool {
 	if i.ShouldIter {
-		outVal := reflect.ValueOf(out)
 		if i.NumIterated >= len(i.Results) {
 			return false
 		}
 
-		outVal.Elem().Set(reflect.ValueOf(i.Results[i.NumIterated]).Elem())
+		reflect.ValueOf(out).Elem().Set(reflect.ValueOf(i.Results[i.NumIterated]).Elem())
 		i.NumIterated++
 		return true
 	}

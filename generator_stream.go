@@ -124,7 +124,6 @@ func (j *streamMigrationGenerator) generateJobs(ctx context.Context, env Environ
 
 	for iter.Next(ctx) {
 		count++
-
 		if err := iter.Decode(&doc); err != nil {
 			grip.Error(message.WrapError(err, "problem decoding generator results"))
 			break
