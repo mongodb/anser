@@ -5,6 +5,7 @@ import (
 
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type clientWrapper struct {
@@ -43,18 +44,18 @@ type collectionWrapper struct {
 	*mongo.Collection
 }
 
-func (c *collectionWrapper) Aggregate(ctx context.Context, pipe interface{}) (Cursor, error) {
-	cur, err := c.Collection.Aggregate(ctx, pipe)
+func (c *collectionWrapper) Aggregate(ctx context.Context, pipe interface{}, opts ...*options.AggregateOptions) (Cursor, error) {
+	cur, err := c.Collection.Aggregate(ctx, pipe, opts...)
 	return &cursorWrapper{cur}, errors.WithStack(err)
 }
 
-func (c *collectionWrapper) Find(ctx context.Context, query interface{}) (Cursor, error) {
-	cur, err := c.Collection.Find(ctx, query)
+func (c *collectionWrapper) Find(ctx context.Context, query interface{}, opts ...*options.FindOptions) (Cursor, error) {
+	cur, err := c.Collection.Find(ctx, query, opts...)
 	return &cursorWrapper{cur}, errors.WithStack(err)
 }
 
-func (c *collectionWrapper) FindOne(ctx context.Context, query interface{}) SingleResult {
-	return &singleResultWrapper{c.Collection.FindOne(ctx, query)}
+func (c *collectionWrapper) FindOne(ctx context.Context, query interface{}, opts ...*options.FindOneOptions) SingleResult {
+	return &singleResultWrapper{c.Collection.FindOne(ctx, query, opts...)}
 }
 
 func (c *collectionWrapper) InsertMany(ctx context.Context, docs []interface{}) (*InsertManyResult, error) {
