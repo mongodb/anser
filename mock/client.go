@@ -4,8 +4,8 @@ import (
 	"context"
 	"reflect"
 
+	"github.com/evergreen-ci/birch"
 	"github.com/mongodb/anser/client"
-	"github.com/mongodb/ftdc/bsonx"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -150,7 +150,7 @@ type SingleResult struct {
 }
 
 func NewSingleResult() *SingleResult {
-	doc := bsonx.NewDocument()
+	doc := birch.NewDocument()
 	val, _ := doc.MarshalBSON()
 
 	return &SingleResult{DecodeBytesValue: val}

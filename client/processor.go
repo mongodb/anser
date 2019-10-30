@@ -1,8 +1,8 @@
 package client
 
 import (
+	"github.com/evergreen-ci/birch"
 	"github.com/mongodb/anser/model"
-	"github.com/mongodb/ftdc/bsonx"
 )
 
 // Processor defines the process for processing a stream of
@@ -18,4 +18,4 @@ type Processor interface {
 //
 // Implementors of MigrationOperations are responsible for
 // implementing idempotent operations.
-type MigrationOperation func(Client, *bsonx.Document) error
+type MigrationOperation func(Client, *birch.Document) error
