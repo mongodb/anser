@@ -9,8 +9,6 @@ import (
 )
 
 type basicMonitor struct {
-	config MonitorConfig
-
 	inProg     map[int64]eventKey
 	inProgLock sync.Mutex
 
