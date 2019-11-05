@@ -5,28 +5,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mongodb/ftdc/bsonx"
-	"github.com/mongodb/grip/message"
 	"go.mongodb.org/mongo-driver/event"
 )
 
-type MonitorConfig struct {
-	NumWindows     int
-	WindowDuration time.Duration
-}
-
-func (c *MonitorConfig) Validate() error {
-	if c.NumWindows <= 0 {
-		c.NumWindows = 100
-	}
-	if c.WindowDuration < time.Minute {
-		c.WindowDuration = time.Minute
-	}
-
-	return nil
-}
-
-type Monitor struct {
+type basicMonitor struct {
 	config MonitorConfig
 
 	inProg     map[int64]eventKey
@@ -35,49 +17,18 @@ type Monitor struct {
 	current        map[eventKey]*eventRecord
 	currentStartAt time.Time
 	currentLock    sync.Mutex
-
-	windows     []eventWindow
-	windowsLock sync.Mutex
 }
 
-type eventKey struct {
-	dbName   string
-	cmdName  string
-	collName string
-}
-
-type eventRecord struct {
-	failCount    int64
-	successCount int64
-	durationTime time.Duration
-	mutex        sync.Mutex
-}
-
-type eventWindow struct {
-	timestamp time.Time
-	data      map[eventKey]*eventRecord
-}
-
-func (e eventWindow) export() *bsonx.Document { return nil }
-
-func (m *Monitor) handleStartedEvent(ctx context.Context, e *event.CommandStartedEvent) {
-	r := eventKey{
-		dbName:  e.DatabaseName,
-		cmdName: e.CommandName,
+// NewwBasicMonitor returns a simple monitor implementation that does
+// not automatically rotate data.
+func NewBasicMonitor() Monitor {
+	return &basicMonitor{
+		inProg:  make(map[int64]eventKey),
+		current: make(map[eventKey]*eventRecord),
 	}
-
-	arg, err := e.Command.LookupErr(r.cmdName)
-	if err == nil {
-		r.collName, _ = arg.StringValueOK()
-	}
-
-	m.inProgLock.Lock()
-	defer m.inProgLock.Unlock()
-
-	m.inProg[e.RequestID] = r
 }
 
-func (m *Monitor) popRequest(id int64) eventKey {
+func (m *basicMonitor) popRequest(id int64) eventKey {
 	m.inProgLock.Lock()
 	defer m.inProgLock.Unlock()
 
@@ -86,7 +37,14 @@ func (m *Monitor) popRequest(id int64) eventKey {
 	return out
 }
 
-func (m *Monitor) getRecord(id int64) *eventRecord {
+func (m *basicMonitor) setRequest(id int64, key eventKey) {
+	m.inProgLock.Lock()
+	defer m.inProgLock.Unlock()
+
+	m.inProg[id] = key
+}
+
+func (m *basicMonitor) getRecord(id int64) *eventRecord {
 	key := m.popRequest(id)
 	if key.dbName == "" {
 		return nil
@@ -104,68 +62,59 @@ func (m *Monitor) getRecord(id int64) *eventRecord {
 	return event
 }
 
-func (m *Monitor) handleSuccessEvent(ctx context.Context, e *event.CommandSucceededEvent) {
-	event := m.getRecord(e.RequestID)
-	if event == nil {
-		return
-	}
-
-	event.mutex.Lock()
-	defer event.mutex.Unlock()
-
-	event.successCount++
-	event.durationTime += time.Duration(e.DurationNanos)
-}
-
-func (m *Monitor) handleFailedEvent(ctx context.Context, e *event.CommandFailedEvent) {
-	event := m.getRecord(e.RequestID)
-	if event == nil {
-		return
-	}
-
-	event.mutex.Lock()
-	defer event.mutex.Unlock()
-
-	event.failCount++
-	event.durationTime += time.Duration(e.DurationNanos)
-}
-
-func (m *Monitor) DriverAPM() event.CommandMonitor {
+func (m *basicMonitor) DriverAPM() event.CommandMonitor {
 	return event.CommandMonitor{
-		Started:   m.handleStartedEvent,
-		Succeeded: m.handleSuccessEvent,
-		Failed:    m.handleFailedEvent,
+		Started: func(ctx context.Context, e *event.CommandStartedEvent) {
+			var collName string
+
+			if e.CommandName == "getMore" {
+				collName, _ = e.Command.Lookup("collection").StringValueOK()
+			} else {
+				collName, _ = e.Command.Lookup(e.CommandName).StringValueOK()
+			}
+
+			m.setRequest(e.RequestID, eventKey{
+				dbName:   e.DatabaseName,
+				cmdName:  e.CommandName,
+				collName: collName,
+			})
+		},
+		Succeeded: func(ctx context.Context, e *event.CommandSucceededEvent) {
+			event := m.getRecord(e.RequestID)
+			if event == nil {
+				return
+			}
+
+			event.mutex.Lock()
+			defer event.mutex.Unlock()
+
+			event.Succeeded++
+			event.Duration += time.Duration(e.DurationNanos)
+		},
+		Failed: func(ctx context.Context, e *event.CommandFailedEvent) {
+			event := m.getRecord(e.RequestID)
+			if event == nil {
+				return
+			}
+
+			event.mutex.Lock()
+			defer event.mutex.Unlock()
+
+			event.Failed++
+			event.Duration += time.Duration(e.DurationNanos)
+		},
 	}
 }
 
-func (m *Monitor) rotateCurrent() eventWindow {
+func (m *basicMonitor) Rotate() Event {
 	m.currentLock.Lock()
 	defer m.currentLock.Unlock()
 
-	out := eventWindow{
+	out := &eventWindow{
 		data:      m.current,
 		timestamp: m.currentStartAt,
 	}
 	m.current = make(map[eventKey]*eventRecord)
 	m.currentStartAt = time.Now()
 	return out
-}
-
-func (m *Monitor) Rotate() {
-	m.windowsLock.Lock()
-	defer m.windowsLock.Unlock()
-	m.windows = append(m.windows, m.rotateCurrent())
-
-	if len(m.windows) > m.config.NumWindows {
-		m.windows = m.windows[1:]
-	}
-}
-
-type ClientMonitor interface {
-	DriverAPM() event.CommandMonitor
-}
-
-type Event interface {
-	Message() message.Composer
-	Docum
 }
