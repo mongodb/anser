@@ -9,6 +9,8 @@ import (
 )
 
 type basicMonitor struct {
+	conf *MonitorConf
+
 	inProg     map[int64]eventKey
 	inProgLock sync.Mutex
 
@@ -18,9 +20,11 @@ type basicMonitor struct {
 }
 
 // NewwBasicMonitor returns a simple monitor implementation that does
-// not automatically rotate data.
-func NewBasicMonitor() Monitor {
+// not automatically rotate data. The MonitorConf makes it possible to
+// filter events. If this value is nil, no events will be filtered.
+func NewBasicMonitor(conf *MonitorConf) Monitor {
 	return &basicMonitor{
+		conf:    conf,
 		inProg:  make(map[int64]eventKey),
 		current: make(map[eventKey]*eventRecord),
 	}
@@ -30,12 +34,19 @@ func (m *basicMonitor) popRequest(id int64) eventKey {
 	m.inProgLock.Lock()
 	defer m.inProgLock.Unlock()
 
-	out := m.inProg[id]
-	delete(m.inProg, id)
+	out, ok := m.inProg[id]
+	if ok {
+		delete(m.inProg, id)
+	}
+
 	return out
 }
 
 func (m *basicMonitor) setRequest(id int64, key eventKey) {
+	if !m.conf.shouldTrack(key) {
+		return
+	}
+
 	m.inProgLock.Lock()
 	defer m.inProgLock.Unlock()
 
@@ -105,6 +116,8 @@ func (m *basicMonitor) DriverAPM() event.CommandMonitor {
 }
 
 func (m *basicMonitor) Rotate() Event {
+	newWindow := m.conf.window()
+
 	m.currentLock.Lock()
 	defer m.currentLock.Unlock()
 
@@ -112,7 +125,8 @@ func (m *basicMonitor) Rotate() Event {
 		data:      m.current,
 		timestamp: m.currentStartAt,
 	}
-	m.current = make(map[eventKey]*eventRecord)
+
+	m.current = newWindow
 	m.currentStartAt = time.Now()
 	return out
 }
