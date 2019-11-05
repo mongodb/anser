@@ -30,7 +30,10 @@ type eventWindow struct {
 }
 
 func (e *eventWindow) Message() message.Composer {
-	out := message.Fields{}
+	out := message.Fields{
+		"start_at": e.timestamp,
+		"message":  "apm-event",
+	}
 	for k, v := range e.data {
 		out[k.String()] = v
 	}

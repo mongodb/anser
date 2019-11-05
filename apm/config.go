@@ -1,10 +1,16 @@
 package apm
 
-type MonitorConf struct {
+type MonitorConfig struct {
 	PopulateEvents bool
 	Commands       []string
 	Databases      []string
 	Collections    []string
+	Namespaces     []Namespace
+}
+
+type Namespace struct {
+	DB         string
+	Collection string
 }
 
 func stringSliceContains(slice []string, item string) bool {
@@ -21,7 +27,7 @@ func stringSliceContains(slice []string, item string) bool {
 	return false
 }
 
-func (c *MonitorConf) shouldTrack(e eventKey) bool {
+func (c *MonitorConfig) shouldTrack(e eventKey) bool {
 	if c == nil {
 		return true
 	}
@@ -38,10 +44,20 @@ func (c *MonitorConf) shouldTrack(e eventKey) bool {
 		return false
 	}
 
+	if len(c.Namespaces) > 0 {
+		for _, ns := range c.Namespaces {
+			if ns.DB == e.dbName && ns.Collection == e.collName {
+				return true
+			}
+		}
+
+		return false
+	}
+
 	return true
 }
 
-func (c *MonitorConf) window() map[eventKey]*eventRecord {
+func (c *MonitorConfig) window() map[eventKey]*eventRecord {
 	out := make(map[eventKey]*eventRecord)
 	if c == nil {
 		return out
@@ -56,6 +72,12 @@ func (c *MonitorConf) window() map[eventKey]*eventRecord {
 			for _, cmd := range c.Commands {
 				out[eventKey{dbName: db, collName: coll, cmdName: cmd}] = &eventRecord{}
 			}
+		}
+	}
+
+	for _, ns := range c.Namespaces {
+		for _, cmd := range c.Commands {
+			out[eventKey{dbName: ns.DB, collName: ns.Collection, cmdName: cmd}] = &eventRecord{}
 		}
 	}
 

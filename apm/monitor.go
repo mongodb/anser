@@ -9,7 +9,7 @@ import (
 )
 
 type basicMonitor struct {
-	conf *MonitorConf
+	config *MonitorConfig
 
 	inProg     map[int64]eventKey
 	inProgLock sync.Mutex
@@ -20,13 +20,14 @@ type basicMonitor struct {
 }
 
 // NewwBasicMonitor returns a simple monitor implementation that does
-// not automatically rotate data. The MonitorConf makes it possible to
+// not automatically rotate data. The MonitorConfig makes it possible to
 // filter events. If this value is nil, no events will be filtered.
-func NewBasicMonitor(conf *MonitorConf) Monitor {
+func NewBasicMonitor(config *MonitorConfig) Monitor {
 	return &basicMonitor{
-		conf:    conf,
-		inProg:  make(map[int64]eventKey),
-		current: make(map[eventKey]*eventRecord),
+		config:         config,
+		inProg:         make(map[int64]eventKey),
+		current:        make(map[eventKey]*eventRecord),
+		currentStartAt: time.Now(),
 	}
 }
 
@@ -43,7 +44,7 @@ func (m *basicMonitor) popRequest(id int64) eventKey {
 }
 
 func (m *basicMonitor) setRequest(id int64, key eventKey) {
-	if !m.conf.shouldTrack(key) {
+	if !m.config.shouldTrack(key) {
 		return
 	}
 
@@ -55,9 +56,6 @@ func (m *basicMonitor) setRequest(id int64, key eventKey) {
 
 func (m *basicMonitor) getRecord(id int64) *eventRecord {
 	key := m.popRequest(id)
-	if key.dbName == "" {
-		return nil
-	}
 
 	m.currentLock.Lock()
 	defer m.currentLock.Unlock()
@@ -90,9 +88,6 @@ func (m *basicMonitor) DriverAPM() event.CommandMonitor {
 		},
 		Succeeded: func(ctx context.Context, e *event.CommandSucceededEvent) {
 			event := m.getRecord(e.RequestID)
-			if event == nil {
-				return
-			}
 
 			event.mutex.Lock()
 			defer event.mutex.Unlock()
@@ -102,9 +97,6 @@ func (m *basicMonitor) DriverAPM() event.CommandMonitor {
 		},
 		Failed: func(ctx context.Context, e *event.CommandFailedEvent) {
 			event := m.getRecord(e.RequestID)
-			if event == nil {
-				return
-			}
 
 			event.mutex.Lock()
 			defer event.mutex.Unlock()
@@ -116,7 +108,7 @@ func (m *basicMonitor) DriverAPM() event.CommandMonitor {
 }
 
 func (m *basicMonitor) Rotate() Event {
-	newWindow := m.conf.window()
+	newWindow := m.config.window()
 
 	m.currentLock.Lock()
 	defer m.currentLock.Unlock()
