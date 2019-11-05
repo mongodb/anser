@@ -7,7 +7,7 @@ import (
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/anser/model"
-	"github.com/mongodb/ftdc/bsonx"
+	"github.com/evergreen-ci/birch"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -95,7 +95,7 @@ func (j *manualMigrationJob) Run(ctx context.Context) {
 			return
 		}
 
-		doc, err := bsonx.ReadDocument(payload)
+		doc, err := birch.ReadDocument(payload)
 		if err != nil {
 			j.AddError(err)
 			return

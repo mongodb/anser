@@ -11,7 +11,7 @@ import (
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/anser/mock"
 	"github.com/mongodb/anser/model"
-	"github.com/mongodb/ftdc/bsonx"
+	"github.com/evergreen-ci/birch"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -116,8 +116,8 @@ func TestManualMigration(t *testing.T) {
 		})
 	})
 	t.Run("Client", func(t *testing.T) {
-		assert.NoError(t, env.RegisterManualMigrationOperation("passing", func(c client.Client, d *bsonx.Document) error { return nil }))
-		assert.NoError(t, env.RegisterManualMigrationOperation("failing", func(c client.Client, d *bsonx.Document) error { return errors.New("manual fail") }))
+		assert.NoError(t, env.RegisterManualMigrationOperation("passing", func(c client.Client, d *birch.Document) error { return nil }))
+		assert.NoError(t, env.RegisterManualMigrationOperation("failing", func(c client.Client, d *birch.Document) error { return errors.New("manual fail") }))
 		defer func() { env.MigrationRegistry = make(map[string]client.MigrationOperation) }()
 
 		t.Run("NoClient", func(t *testing.T) {
