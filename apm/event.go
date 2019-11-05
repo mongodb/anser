@@ -50,6 +50,6 @@ func (e *eventWindow) Document() *birch.Document {
 
 	return birch.DC.Elements(
 		birch.EC.Time("ts", e.timestamp),
-		birch.EC.SubDocument("payload", payload.Sorted()),
+		birch.EC.SubDocument("events", payload.Sorted()),
 	)
 }
