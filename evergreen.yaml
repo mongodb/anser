@@ -7,27 +7,8 @@ variables:
     # correspond to a make target for the build operation.
     name: test
     commands:
-      - command: git.get_project
-        type: system
-        params:
-          directory: gopath/src/github.com/mongodb/anser
       - func: run-make
         vars: { target: "${task_name}" }
-
-  - &run-build-with-mongodb
-    # runs a make target above, but only on systems that have a
-    # running mongod started for testing.
-    name: test
-    commands:
-      - command: git.get_project
-        type: system
-        params:
-          directory: gopath/src/github.com/mongodb/anser
-      - func: set-up-mongodb
-      - func: run-make
-        vars: { target: "${task_name}" }
-
-
 
 #######################################
 #              Functions              #
@@ -39,7 +20,7 @@ functions:
     params:
        script: |
          set -o errexit
-         set -o verbose
+         set -o xtrace
 
          # Configure a local go path for this build.
          export GOPATH=`pwd`/gopath
@@ -106,8 +87,6 @@ post:
     params:
       files:
         - "gopath/src/github.com/mongodb/anser/build/output.*"
-        - "gopath/src/github.com/mongodb/anser/build/test.*.out"
-        - "gopath/src/github.com/mongodb/anser/build/race.*.out"
   - command: s3.put
     type: system
     params:
@@ -132,36 +111,80 @@ post:
       display_name: "(txt) coverage:"
 
 tasks:
-  # the build (with and without the race detector) and lint tasks use
-  # a template that does not include test result parsing.
-  - name: lint
-    tags: ["report"]
-    commands:
+  - <<: *run-build
+    tags: ["test"]
+    name: test-apm
+  - <<: *run-build
+    tags: ["test"]
+    name: test-mock
+  - <<: *run-build
+    tags: ["test"]
+    name: test-model
+  - <<: *run-build
+    tags: ["test"]
+    name: test-anser
+  - <<: *run-build
+    tags: ["test"]
+    name: test-db
+  - <<: *run-build
+    tags: ["test"]
+    name: test-client
+
+  - <<: *run-build
+    tags: ["lint"]
+    name: lint-apm
+  - <<: *run-build
+    tags: ["lint"]
+    name: lint-mock
+  - <<: *run-build
+    tags: ["lint"]
+    name: lint-model
+  - <<: *run-build
+    tags: ["lint"]
+    name: lint-anser
+  - <<: *run-build
+    tags: ["lint"]
+    name: lint-db
+  - <<: *run-build
+    tags: ["lint"]
+    name: lint-client
+
+task_groups:
+  - name: lintGroup
+    tasks: [ ".lint"]
+    max_hosts: 3
+    setup_group:
       - command: git.get_project
         params:
           directory: gopath/src/github.com/mongodb/anser
+    setup_task:
       - func: run-make
-        vars: { target: "lint" }
-
-  - name: coverage
-    tags: [ "report" ]
-    commands:
+        vars: { target: "clean-results" }
+    teardown_task:
+      - command: gotest.parse_files
+        type: setup
+        params:
+          files:
+            - "gopath/src/github.com/mongodb/anser/build/output.*"
+  - name: testGroup
+    tasks: [ ".test"]
+    max_hosts: 3
+    setup_group_can_fail_task: true
+    share_processes: true
+    setup_group:
       - command: git.get_project
         params:
           directory: gopath/src/github.com/mongodb/anser
       - func: set-up-mongodb
+    setup_task:
       - func: run-make
-        vars:
-          target: "coverage-html"
-          make_args: "-k"
-
-  - <<: *run-build-with-mongodb
-    tags: ["test"]
-    name: test
-
-  - <<: *run-build-with-mongodb
-    tags: ["race"]
-    name: race
+        vars: { target: "clean-results" }
+    teardown_task:
+      - command: gotest.parse_files
+        type: setup
+        params:
+          files:
+            - "gopath/src/github.com/mongodb/anser/build/output.*"
 
 #######################################
 #           Buildvariants             #
@@ -170,10 +193,17 @@ buildvariants:
   - name: race-detector
     display_name: Race Detector (Arch Linux)
     expansions:
+      build_env: "RACE_DETECTOR=true"
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.6.4.tgz
     run_on:
       - archlinux-test
-    tasks: [ ".race", ".report" ]
+    tasks: [ "testGroup" ]
+
+  - name: lint
+    display_name: Lint (Arch Linux)
+    run_on:
+      - archlinux-test
+    tasks: [ "lintGroup" ]
 
   - name: ubuntu1604
     display_name: Ubuntu 16.04
@@ -182,7 +212,7 @@ buildvariants:
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.6.4.tgz
     run_on:
       - ubuntu1604-test
-    tasks: [ ".test" ]
+    tasks: [ "testGroup" ]
 
   - name: macos
     display_name: macOS
@@ -191,4 +221,4 @@ buildvariants:
       mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-x86_64-3.2.9.tgz
     run_on:
       - macos-1014
-    tasks: [ ".test" ]
+    tasks: [ "testGroup" ]
