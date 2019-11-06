@@ -27,7 +27,7 @@ deps += github.com/pkg/errors
 deps += github.com/stretchr/testify
 deps += github.com/tychoish/tarjan
 deps += github.com/satori/go.uuid
-deps += go.mongodb.org/mongo-driver
+deps += go.mongodb.org/mongo-driver/bson
 deps += gopkg.in/mgo.v2
 # end project dependencies
 
