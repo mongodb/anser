@@ -149,6 +149,7 @@ tasks:
       - command: git.get_project
         params:
           directory: gopath/src/github.com/mongodb/anser
+      - func: set-up-mongodb
       - func: run-make
         vars:
           target: "coverage-html"
