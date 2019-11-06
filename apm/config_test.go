@@ -43,7 +43,7 @@ func TestMonitorConfig(t *testing.T) {
 			}
 			assert.True(t, conf.shouldTrack(eventKey{}))
 		})
-		t.Run("Populated", func(t *testing.T) {
+		t.Run("PopulatedSingle", func(t *testing.T) {
 			conf := &MonitorConfig{
 				Commands:    []string{"cmd"},
 				Databases:   []string{"db"},
@@ -51,7 +51,7 @@ func TestMonitorConfig(t *testing.T) {
 			}
 			assert.False(t, conf.shouldTrack(eventKey{}))
 		})
-		t.Run("Populated", func(t *testing.T) {
+		t.Run("PopulatedPartial", func(t *testing.T) {
 			conf := &MonitorConfig{
 				Commands:    []string{"cmd"},
 				Databases:   []string{"db"},

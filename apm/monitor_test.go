@@ -97,6 +97,8 @@ func TestMonitor(t *testing.T) {
 		collector := m.DriverAPM()
 		require.NotNil(t, collector)
 		t.Run("StartEventFind", func(t *testing.T) {
+			resetMonitor(t, m)
+			assert.Len(t, m.inProg, 0)
 			collector.Started(ctx, &event.CommandStartedEvent{
 				DatabaseName: "amboy",
 				CommandName:  "find",
@@ -105,8 +107,10 @@ func TestMonitor(t *testing.T) {
 					birch.EC.String("find", "jobs"),
 				)),
 			})
+			assert.Len(t, m.inProg, 1)
 		})
 		t.Run("StartEventGetMore", func(t *testing.T) {
+			resetMonitor(t, m)
 			collector.Started(ctx, &event.CommandStartedEvent{
 				DatabaseName: "amboy",
 				CommandName:  "getMore",
@@ -119,18 +123,20 @@ func TestMonitor(t *testing.T) {
 			assert.Equal(t, "jobs", m.inProg[44].collName)
 		})
 		t.Run("InvalidCommand", func(t *testing.T) {
+			resetMonitor(t, m)
 			collector.Started(ctx, &event.CommandStartedEvent{
 				DatabaseName: "amboy",
 				CommandName:  "wat",
 				RequestID:    84,
 				Command:      nil,
 			})
-			_, ok := m.inProg[44]
+			_, ok := m.inProg[84]
 			assert.True(t, ok)
 			assert.Equal(t, "", m.inProg[84].collName)
 			assert.Equal(t, "wat", m.inProg[84].cmdName)
 		})
 		t.Run("CompleteNils", func(t *testing.T) {
+			resetMonitor(t, m)
 			collector.Succeeded(ctx, &event.CommandSucceededEvent{CommandFinishedEvent: event.CommandFinishedEvent{RequestID: 100}})
 			assert.Len(t, m.current, 0)
 			collector.Failed(ctx, &event.CommandFailedEvent{CommandFinishedEvent: event.CommandFinishedEvent{RequestID: 100}})

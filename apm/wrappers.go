@@ -15,7 +15,7 @@ type loggingMonitor struct {
 }
 
 // NewLoggingMonitor wraps an existing logging monitor that
-// automatically logging the output the default grip logger on the
+// automatically logs the output the default grip logger on the
 // specified interval.
 func NewLoggingMonitor(ctx context.Context, dur time.Duration, m Monitor) Monitor {
 	impl := &loggingMonitor{

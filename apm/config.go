@@ -38,10 +38,6 @@ type Namespace struct {
 }
 
 func stringSliceContains(slice []string, item string) bool {
-	if len(slice) == 0 {
-		return false
-	}
-
 	for idx := range slice {
 		if slice[idx] == item {
 			return true

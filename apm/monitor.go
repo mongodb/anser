@@ -21,7 +21,7 @@ type basicMonitor struct {
 	currentLock    sync.Mutex
 }
 
-// NewwBasicMonitor returns a simple monitor implementation that does
+// NewBasicMonitor returns a simple monitor implementation that does
 // not automatically rotate data. The MonitorConfig makes it possible to
 // filter events. If this value is nil, no events will be filtered.
 func NewBasicMonitor(config *MonitorConfig) Monitor {
@@ -65,13 +65,13 @@ func (m *basicMonitor) getRecord(id int64) *eventRecord {
 	m.currentLock.Lock()
 	defer m.currentLock.Unlock()
 
-	event := m.current[key]
-	if event == nil {
-		event = &eventRecord{}
-		m.current[key] = event
+	e := m.current[key]
+	if e == nil {
+		e = &eventRecord{}
+		m.current[key] = e
 	}
 
-	return event
+	return e
 }
 
 func resolveCollectionName(raw bson.Raw, name string) (collection string) {
