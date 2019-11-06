@@ -27,6 +27,7 @@ deps += github.com/pkg/errors
 deps += github.com/stretchr/testify
 deps += github.com/tychoish/tarjan
 deps += github.com/satori/go.uuid
+deps += github.com/evergreen-ci/birch
 deps += go.mongodb.org/mongo-driver/bson
 deps += gopkg.in/mgo.v2
 # end project dependencies
@@ -40,6 +41,7 @@ lintDeps := github.com/alecthomas/gometalinter
 #   include test files and give linters 40s to run to avoid timeouts
 lintArgs := --tests --deadline=3m --vendor --aggregate --sort=line
 lintArgs += --vendored-linters --enable-gc
+lintArgs += --disable=golint --disable=gocyclo
 #   gotype produces false positives because it reads .a files which
 #   are rarely up to date.
 lintArgs += --skip="$(buildDir)" --skip="buildscripts" --skip="$(gopath)"
@@ -74,7 +76,8 @@ $(gopath)/src/%:
 
 # lint setup targets
 lintDeps := $(addprefix $(gopath)/src/,$(lintDeps))
-$(buildDir)/.lintSetup:$(lintDeps)
+$(buildDir)/.lintSetup:$(lintDeps) $(deps)
+	@mkdir -p $(buildDir)
 	$(gopath)/bin/gometalinter --install >/dev/null && touch $@
 $(buildDir)/run-linter:cmd/run-linter/run-linter.go $(buildDir)/.lintSetup
 	$(vendorGopath) go build -o $@ $<

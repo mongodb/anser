@@ -114,7 +114,7 @@ post:
       aws_key: ${aws_key}
       aws_secret: ${aws_secret}
       local_files_include_filter: ["gopath/src/github.com/mongodb/anser/build/output.*.coverage.html"]
-      remote_file: evergreen/${task_id}/
+      remote_file: anser/${task_id}/
       bucket: mciuploads
       content_type: text/html
       permissions: public-read
@@ -125,7 +125,7 @@ post:
       aws_key: ${aws_key}
       aws_secret: ${aws_secret}
       local_files_include_filter: ["gopath/src/github.com/mongodb/anser/build/output.*.coverage"]
-      remote_file: evergreen/${task_id}/
+      remote_file: anser/${task_id}/
       bucket: mciuploads
       content_type: text/plain
       permissions: public-read
@@ -149,6 +149,7 @@ tasks:
       - command: git.get_project
         params:
           directory: gopath/src/github.com/mongodb/anser
+      - func: set-up-mongodb
       - func: run-make
         vars:
           target: "coverage-html"
@@ -169,7 +170,7 @@ buildvariants:
   - name: race-detector
     display_name: Race Detector (Arch Linux)
     expansions:
-      mongodb_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.2.9.tgz
+      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.6.4.tgz
     run_on:
       - archlinux-test
     tasks: [ ".race", ".report" ]
@@ -178,7 +179,7 @@ buildvariants:
     display_name: Ubuntu 16.04
     expansions:
       build_env: "GOROOT=/opt/golang/go1.9/ PATH=/opt/golang/go1.9/bin:$PATH"
-      mongodb_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.2.9.tgz
+      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.6.4.tgz
     run_on:
       - ubuntu1604-test
     tasks: [ ".test" ]
