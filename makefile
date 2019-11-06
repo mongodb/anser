@@ -75,9 +75,10 @@ $(gopath)/src/%:
 # lint setup targets
 lintDeps := $(addprefix $(gopath)/src/,$(lintDeps))
 $(buildDir)/.lintSetup:$(lintDeps)
-	$(gopath)/bin/gometalinter --update --force --install >/dev/null && touch $@
-$(buildDir)/run-linter:scripts/run-linter.go $(buildDir)/.lintSetup
+	$(gopath)/bin/gometalinter --install >/dev/null && touch $@
+$(buildDir)/run-linter:cmd/run-linter/run-linter.go $(buildDir)/.lintSetup
 	$(vendorGopath) go build -o $@ $<
+lint:$(buildDir)/.lintSetup $(lintTargets)
 # end lint setup targets
 
 
