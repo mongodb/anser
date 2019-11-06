@@ -3,8 +3,10 @@ package apm
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/birch"
+	"github.com/mongodb/ftdc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
@@ -133,6 +135,68 @@ func TestMonitor(t *testing.T) {
 			assert.Len(t, m.current, 0)
 			collector.Failed(ctx, &event.CommandFailedEvent{CommandFinishedEvent: event.CommandFinishedEvent{RequestID: 100}})
 			assert.Len(t, m.current, 0)
+		})
+		t.Run("Success", func(t *testing.T) {
+			resetMonitor(t, m)
+			collector.Started(ctx, &event.CommandStartedEvent{
+				DatabaseName: "amboy",
+				CommandName:  "find",
+				RequestID:    42,
+				Command: buildCommand(t, birch.DC.Elements(
+					birch.EC.String("find", "jobs"),
+				)),
+			})
+
+			collector.Succeeded(ctx, &event.CommandSucceededEvent{CommandFinishedEvent: event.CommandFinishedEvent{RequestID: 42}})
+			assert.Len(t, m.current, 1)
+
+			op, ok := m.current[eventKey{dbName: "amboy", cmdName: "find", collName: "jobs"}]
+			require.True(t, ok)
+			assert.EqualValues(t, 1, op.Succeeded)
+			assert.EqualValues(t, 0, op.Failed)
+		})
+		t.Run("Failed", func(t *testing.T) {
+			resetMonitor(t, m)
+			collector.Started(ctx, &event.CommandStartedEvent{
+				DatabaseName: "amboy",
+				CommandName:  "aggregate",
+				RequestID:    100,
+				Command: buildCommand(t, birch.DC.Elements(
+					birch.EC.String("aggregate", "group.jobs"),
+				)),
+			})
+
+			collector.Failed(ctx, &event.CommandFailedEvent{CommandFinishedEvent: event.CommandFinishedEvent{RequestID: 100}})
+			assert.Len(t, m.current, 1)
+
+			op, ok := m.current[eventKey{dbName: "amboy", cmdName: "aggregate", collName: "group.jobs"}]
+			require.True(t, ok)
+			assert.EqualValues(t, 0, op.Succeeded)
+			assert.EqualValues(t, 1, op.Failed)
+		})
+		t.Run("Wrapper", func(t *testing.T) {
+			t.Run("Logging", func(t *testing.T) {
+				resetMonitor(t, m)
+				nctx, ncancel := context.WithCancel(ctx)
+				defer ncancel()
+				wrapped := NewLoggingMonitor(nctx, 10*time.Millisecond, m)
+				assert.NotNil(t, wrapped)
+				assert.Implements(t, (*Monitor)(nil), wrapped)
+				time.Sleep(100 * time.Millisecond)
+			})
+			t.Run("FTDC", func(t *testing.T) {
+				resetMonitor(t, m)
+				nctx, ncancel := context.WithCancel(ctx)
+				defer ncancel()
+				collector := ftdc.NewBaseCollector(10)
+				wrapped := NewFTDCMonitor(nctx, 10*time.Millisecond, collector, m)
+				assert.NotNil(t, wrapped)
+				assert.Implements(t, (*Monitor)(nil), wrapped)
+				time.Sleep(100 * time.Millisecond)
+				info := collector.Info()
+				assert.True(t, info.SampleCount > 5)
+
+			})
 		})
 	})
 	t.Run("Rotate", func(t *testing.T) {
