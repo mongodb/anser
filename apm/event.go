@@ -16,6 +16,7 @@ type eventKey struct {
 }
 
 func (k eventKey) String() string { return fmt.Sprintf("%s.%s.%s", k.dbName, k.collName, k.cmdName) }
+func (k eventKey) isNil() bool    { return k.dbName == "" && k.cmdName == "" && k.collName == "" }
 
 type eventRecord struct {
 	Failed    int64         `bson:"failed" json:"failed" yaml:"failed"`

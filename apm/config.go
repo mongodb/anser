@@ -1,13 +1,37 @@
 package apm
 
+// MonitorConfig makes it possible to configure the behavior of the
+// Monitor. In most cases you can pass a nil value.
 type MonitorConfig struct {
+	// PopulateEvents, when true, forces the collector to
+	// preallocate the output structures, for all filtered
+	// combinations of databases, collections, and commands as
+	// well as namespaces and commands. This is primarily useful
+	// when the output requires a predetermined schema or
+	// structure and you want to maintain the shape of the data
+	// even if no events for a particular command or namespace
+	// occurred.
+	//
+	// When pre-populating events, you should specify commands to
+	// filter and either a list of collections and databases or a
+	// list of namespaces.
 	PopulateEvents bool
-	Commands       []string
-	Databases      []string
-	Collections    []string
-	Namespaces     []Namespace
+
+	// Commands, Databases, and Collections give you the ability
+	// to whitelist a number of operations to filter and exclude
+	// other non-matching operations.
+	Commands    []string
+	Databases   []string
+	Collections []string
+
+	// Namespaces allow you to declare a specific database and
+	// collection name as a pair. When specified, only events that
+	// match the namespace will be collected. Namespace filtering
+	// occurs after the other filtering, including by command.
+	Namespaces []Namespace
 }
 
+// Namespace defines a MongoDB collection and database.
 type Namespace struct {
 	DB         string
 	Collection string

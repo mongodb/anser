@@ -1,10 +1,14 @@
 package apm
 
 import (
+	"context"
 	"testing"
 
+	"github.com/evergreen-ci/birch"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/event"
 )
 
 func TestMonitor(t *testing.T) {
@@ -26,6 +30,7 @@ func TestMonitor(t *testing.T) {
 			})
 		})
 		t.Run("Set", func(t *testing.T) {
+			resetMonitor(t, m)
 			t.Run("WithValue", func(t *testing.T) {
 				m.setRequest(42, eventKey{cmdName: "find"})
 				assert.Len(t, m.inProg, 1)
@@ -46,43 +51,89 @@ func TestMonitor(t *testing.T) {
 			})
 		})
 		t.Run("Get", func(t *testing.T) {
-			assert.Len(t, m.current, 0)
+			resetMonitor(t, m)
 			t.Run("Empty", func(t *testing.T) {
 				r := m.getRecord(42)
-				require.NotNil(t, r)
+				require.Nil(t, r)
 
-				assert.Len(t, m.current, 1)
+				assert.Len(t, m.current, 0)
 			})
 			t.Run("Zeroed", func(t *testing.T) {
+				resetMonitor(t, m)
 				m.inProg[42] = eventKey{}
 				r := m.getRecord(42)
 				assert.Len(t, m.inProg, 0)
-				require.NotNil(t, r)
+				require.Nil(t, r)
 
-				assert.Len(t, m.current, 2)
+				assert.Len(t, m.current, 0)
 			})
 			t.Run("PartialData", func(t *testing.T) {
+				resetMonitor(t, m)
 				m.inProg[42] = eventKey{dbName: "amboy", cmdName: "find"}
 				r := m.getRecord(42)
 				assert.NotNil(t, r)
 				assert.Len(t, m.inProg, 0)
 
-				assert.Len(t, m.current, 2)
+				assert.Len(t, m.current, 1)
 			})
 			t.Run("MultipleData", func(t *testing.T) {
+				resetMonitor(t, m)
 				m.inProg[42] = eventKey{dbName: "amboy", collName: "jobs", cmdName: "find"}
 				r := m.getRecord(42)
 				assert.NotNil(t, r)
 				assert.Len(t, m.inProg, 0)
 
-				assert.Len(t, m.current, 3)
+				assert.Len(t, m.current, 1)
 			})
-			m.current = m.config.window()
-			assert.Len(t, m.current, 0)
 		})
 	})
 	t.Run("Collector", func(t *testing.T) {
-		assert.NotNil(t, m.DriverAPM())
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		resetMonitor(t, m)
+		collector := m.DriverAPM()
+		require.NotNil(t, collector)
+		t.Run("StartEventFind", func(t *testing.T) {
+			collector.Started(ctx, &event.CommandStartedEvent{
+				DatabaseName: "amboy",
+				CommandName:  "find",
+				RequestID:    42,
+				Command: buildCommand(t, birch.DC.Elements(
+					birch.EC.String("find", "jobs"),
+				)),
+			})
+		})
+		t.Run("StartEventGetMore", func(t *testing.T) {
+			collector.Started(ctx, &event.CommandStartedEvent{
+				DatabaseName: "amboy",
+				CommandName:  "getMore",
+				RequestID:    44,
+				Command: buildCommand(t, birch.DC.Elements(
+					birch.EC.String("getMore", ""),
+					birch.EC.String("collection", "jobs"),
+				)),
+			})
+			assert.Equal(t, "jobs", m.inProg[44].collName)
+		})
+		t.Run("InvalidCommand", func(t *testing.T) {
+			collector.Started(ctx, &event.CommandStartedEvent{
+				DatabaseName: "amboy",
+				CommandName:  "wat",
+				RequestID:    84,
+				Command:      nil,
+			})
+			_, ok := m.inProg[44]
+			assert.True(t, ok)
+			assert.Equal(t, "", m.inProg[84].collName)
+			assert.Equal(t, "wat", m.inProg[84].cmdName)
+		})
+		t.Run("CompleteNils", func(t *testing.T) {
+			collector.Succeeded(ctx, &event.CommandSucceededEvent{CommandFinishedEvent: event.CommandFinishedEvent{RequestID: 100}})
+			assert.Len(t, m.current, 0)
+			collector.Failed(ctx, &event.CommandFailedEvent{CommandFinishedEvent: event.CommandFinishedEvent{RequestID: 100}})
+			assert.Len(t, m.current, 0)
+		})
 	})
 	t.Run("Rotate", func(t *testing.T) {
 		t.Run("Timestamp", func(t *testing.T) {
@@ -92,6 +143,7 @@ func TestMonitor(t *testing.T) {
 		})
 		t.Run("Rotate", func(t *testing.T) {
 			assert.Len(t, m.current, 0)
+			m.inProg[42] = eventKey{cmdName: "find"}
 			_ = m.getRecord(42)
 			assert.Len(t, m.current, 1)
 			e := m.Rotate()
@@ -102,4 +154,24 @@ func TestMonitor(t *testing.T) {
 			}
 		})
 	})
+}
+
+func resetMonitor(t *testing.T, in Monitor) {
+	switch m := in.(type) {
+	case *basicMonitor:
+		m.config = nil
+		m.current = m.config.window()
+		m.inProg = map[int64]eventKey{}
+		require.Len(t, m.current, 0)
+	case *ftdcCollector:
+		resetMonitor(t, m.Monitor)
+	case *loggingMonitor:
+		resetMonitor(t, m.Monitor)
+	}
+}
+
+func buildCommand(t *testing.T, doc *birch.Document) bson.Raw {
+	raw, err := doc.MarshalBSON()
+	require.NoError(t, err)
+	return bson.Raw(raw)
 }

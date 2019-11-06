@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/evergreen-ci/birch"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/event"
 )
 
@@ -56,6 +58,9 @@ func (m *basicMonitor) setRequest(id int64, key eventKey) {
 
 func (m *basicMonitor) getRecord(id int64) *eventRecord {
 	key := m.popRequest(id)
+	if key.isNil() {
+		return nil
+	}
 
 	m.currentLock.Lock()
 	defer m.currentLock.Unlock()
@@ -69,25 +74,36 @@ func (m *basicMonitor) getRecord(id int64) *eventRecord {
 	return event
 }
 
+func resolveCollectionName(raw bson.Raw, name string) (collection string) {
+	doc, err := birch.DC.ReaderErr(birch.Reader(raw))
+	if err != nil {
+		return
+	}
+
+	switch name {
+	case "getMore":
+		collection, _ = doc.Lookup("collection").StringValueOK()
+	default:
+		collection, _ = doc.Lookup(name).StringValueOK()
+	}
+
+	return
+}
+
 func (m *basicMonitor) DriverAPM() event.CommandMonitor {
 	return event.CommandMonitor{
 		Started: func(ctx context.Context, e *event.CommandStartedEvent) {
-			var collName string
-
-			if e.CommandName == "getMore" {
-				collName, _ = e.Command.Lookup("collection").StringValueOK()
-			} else {
-				collName, _ = e.Command.Lookup(e.CommandName).StringValueOK()
-			}
-
 			m.setRequest(e.RequestID, eventKey{
 				dbName:   e.DatabaseName,
 				cmdName:  e.CommandName,
-				collName: collName,
+				collName: resolveCollectionName(e.Command, e.CommandName),
 			})
 		},
 		Succeeded: func(ctx context.Context, e *event.CommandSucceededEvent) {
 			event := m.getRecord(e.RequestID)
+			if event == nil {
+				return
+			}
 
 			event.mutex.Lock()
 			defer event.mutex.Unlock()
@@ -97,6 +113,9 @@ func (m *basicMonitor) DriverAPM() event.CommandMonitor {
 		},
 		Failed: func(ctx context.Context, e *event.CommandFailedEvent) {
 			event := m.getRecord(e.RequestID)
+			if event == nil {
+				return
+			}
 
 			event.mutex.Lock()
 			defer event.mutex.Unlock()
