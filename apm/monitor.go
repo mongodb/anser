@@ -90,8 +90,8 @@ func resolveCollectionName(raw bson.Raw, name string) (collection string) {
 	return
 }
 
-func (m *basicMonitor) DriverAPM() event.CommandMonitor {
-	return event.CommandMonitor{
+func (m *basicMonitor) DriverAPM() *event.CommandMonitor {
+	return &event.CommandMonitor{
 		Started: func(ctx context.Context, e *event.CommandStartedEvent) {
 			m.setRequest(e.RequestID, eventKey{
 				dbName:   e.DatabaseName,

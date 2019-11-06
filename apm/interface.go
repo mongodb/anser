@@ -8,7 +8,7 @@ import (
 
 // Monitor provides a high level command monitoring total.
 type Monitor interface {
-	DriverAPM() event.CommandMonitor
+	DriverAPM() *event.CommandMonitor
 	Rotate() Event
 }
 
