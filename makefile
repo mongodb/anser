@@ -40,6 +40,7 @@ lintDeps := github.com/alecthomas/gometalinter
 #   include test files and give linters 40s to run to avoid timeouts
 lintArgs := --tests --deadline=3m --vendor --aggregate --sort=line
 lintArgs += --vendored-linters --enable-gc
+lintArgs += --disable=golint --disable=gocyclo
 #   gotype produces false positives because it reads .a files which
 #   are rarely up to date.
 lintArgs += --skip="$(buildDir)" --skip="buildscripts" --skip="$(gopath)"

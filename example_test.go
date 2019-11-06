@@ -74,7 +74,9 @@ func proofOfConcept() error {
 		},
 	}
 
-	app.Setup(env)
+	if err := app.Setup(env); err != nil {
+		return err
+	}
 
 	return app.Run(ctx)
 }
