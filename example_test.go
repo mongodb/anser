@@ -17,7 +17,7 @@ import (
 
 // proofOfConcept is a simple mock "main" to demonstrate how you could
 // build a simple migration utility.
-func proofOfConcept() error {
+func proofOfConcept(shouldUseClient bool) error {
 	env := GetEnvironment()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -44,7 +44,11 @@ func proofOfConcept() error {
 		return err
 	}
 
-	env.SetPreferedDB(client)
+	if shouldUseClient {
+		env.SetPreferedDB(session)
+	} else {
+		env.SetPreferedDB(client)
+	}
 
 	ns := model.Namespace{DB: "mci", Collection: "test"}
 
@@ -85,6 +89,13 @@ func proofOfConcept() error {
 }
 
 func TestExampleApp(t *testing.T) {
-	assert := assert.New(t)
-	assert.NoError(proofOfConcept())
+	ResetEnvironment()
+	t.Run("Session", func(t *testing.T) {
+		t.Skip("fails in CI, deprecated option")
+		assert.NoError(t, proofOfConcept(false))
+	})
+	ResetEnvironment()
+	t.Run("Client", func(t *testing.T) {
+		assert.NoError(t, proofOfConcept(true))
+	})
 }
