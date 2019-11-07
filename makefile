@@ -75,6 +75,9 @@ lint:$(buildDir)/.lintSetup $(lintTargets)
 
 
 # userfacing targets for basic build and development operations
+$(gopath)/src/%:
+	@-[ ! -d $(gopath) ] && mkdir -p $(gopath) || true
+	go get $(subst $(gopath)/src/,,$@)
 build:$(srcFiles) $(gopath)/src/$(projectPath)
 	@mkdir -p $(buildDir)
 	$(gobin) build $(subst $(name),,$(subst -,/,$(foreach pkg,$(packages),./$(pkg))))
