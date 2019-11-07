@@ -22,32 +22,33 @@ func proofOfConcept(shouldUseClient bool) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	q := queue.NewAdaptiveOrderedLocalQueue(3, 3)
-
-	if err := q.Start(ctx); err != nil {
-		return err
-	}
-
-	ses, err := mgo.DialWithTimeout("mongodb://localhost:27017", 10*time.Millisecond)
-	if err != nil {
-		return err
-	}
-	session := db.WrapSession(ses)
-
-	cl, err := mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27017").SetConnectTimeout(10 * time.Millisecond))
+	cl, err := mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27017").SetConnectTimeout(100 * time.Millisecond))
 	if err != nil {
 		return err
 	}
 
 	client := client.WrapClient(cl)
-	if err := env.Setup(q, client, session); err != nil {
+	var session db.Session
+	if shouldUseClient {
+		env.SetPreferedDB(client)
+		session = db.WrapClient(ctx, cl)
+	} else {
+		ses, err := mgo.DialWithTimeout("mongodb://localhost:27017", 100*time.Millisecond)
+		if err != nil {
+			return err
+		}
+		session = db.WrapSession(ses)
+
+		env.SetPreferedDB(session)
+	}
+
+	q := queue.NewAdaptiveOrderedLocalQueue(3, 3)
+	if err := q.Start(ctx); err != nil {
 		return err
 	}
 
-	if shouldUseClient {
-		env.SetPreferedDB(session)
-	} else {
-		env.SetPreferedDB(client)
+	if err := env.Setup(q, client, session); err != nil {
+		return err
 	}
 
 	ns := model.Namespace{DB: "mci", Collection: "test"}
@@ -89,9 +90,9 @@ func proofOfConcept(shouldUseClient bool) error {
 }
 
 func TestExampleApp(t *testing.T) {
+	t.Skip("flawed integration test")
 	ResetEnvironment()
 	t.Run("Session", func(t *testing.T) {
-		t.Skip("fails in CI, deprecated option")
 		assert.NoError(t, proofOfConcept(false))
 	})
 	ResetEnvironment()
