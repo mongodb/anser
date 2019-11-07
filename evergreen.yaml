@@ -32,23 +32,17 @@ functions:
       working_dir: gopath/src/github.com/mongodb/anser/
       binary: make
       args: ["${make_args|}", "${target}"]
+      add_expansions_to_env: true
       env:
-        DISABLE_COVERAGE: ${disable_coverage}
-        GOARCH: ${goarch}
-        GO_BIN_PATH: ${gobin}
-        GOOS: ${goos}
         GOPATH: ${workdir}/gopath
-        GOROOT: ${goroot}
-        RACE_DETECTOR: ${race_detector}
-        TEST_TIMEOUT: ${test_timeout}
         VENDOR_PKG: "github.com/${trigger_repo_owner}/${trigger_repo_name}"
         VENDOR_REVISION: ${trigger_revision}
   set-up-mongodb:
     - command: subprocess.exec
       type: setup
       params:
+        add_expansions_to_env: true
         env:
-          MONGODB_URL: ${mongodb_url}
           DECOMPRESS: ${decompress}
         working_dir: gopath/src/github.com/mongodb/anser/
         command: make get-mongodb
@@ -57,15 +51,18 @@ functions:
       params:
         background: true
         working_dir: gopath/src/github.com/mongodb/anser/
+        add_expansions_to_env: true
         command: make start-mongod
     - command: subprocess.exec
       type: setup
       params:
         working_dir: gopath/src/github.com/mongodb/anser/
+        add_expansions_to_env: true
         command: make check-mongod
     - command: subprocess.exec
       type: setup
       params:
+        add_expansions_to_env: true
         working_dir: gopath/src/github.com/mongodb/anser/
         command: make init-rs
 
@@ -115,7 +112,7 @@ tasks:
 task_groups:
   - name: lintGroup
     tasks: [ ".lint"]
-    max_hosts: 2
+    max_hosts: 3
     setup_group:
       - func: get-project
     setup_task:
@@ -125,7 +122,7 @@ task_groups:
       - func: parse-results
   - name: testGroup
     tasks: [ ".test"]
-    max_hosts: 2
+    max_hosts: 3
     setup_group_can_fail_task: true
     share_processes: true
     setup_group:
@@ -144,8 +141,8 @@ buildvariants:
   - name: race-detector
     display_name: Race Detector (Arch Linux)
     expansions:
-      race_detector: true
-      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.6.4.tgz
+      RACE_DETECTOR: true
+      MONGODB_URL: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.6.4.tgz
     run_on:
       - archlinux-test
     tasks: [ "testGroup" ]
@@ -159,9 +156,9 @@ buildvariants:
   - name: ubuntu1604
     display_name: Ubuntu 16.04
     expansions:
-      gobin: /opt/golang/go1.9/bin/go
-      goroot: /opt/golang/go1.9
-      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.6.4.tgz
+      GO_BIN_PATH: /opt/golang/go1.9/bin/go
+      GOROOT: /opt/golang/go1.9
+      MONGODB_URL: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.6.4.tgz
     run_on:
       - ubuntu1604-test
     tasks: [ "testGroup" ]
@@ -169,9 +166,10 @@ buildvariants:
   - name: macos
     display_name: macOS
     expansions:
-      gobin: /opt/golang/go1.11/bin/go
-      goroot: /opt/golang/go1.11
-      mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-x86_64-3.2.9.tgz
+      DISABLE_COVERAGE: yes
+      GO_BIN_PATH: /opt/golang/go1.9/bin/go
+      GOROOT: /opt/golang/go1.9
+      MONGODB_URL: https://fastdl.mongodb.org/osx/mongodb-osx-x86_64-3.2.9.tgz
     run_on:
       - macos-1014
     tasks: [ "testGroup" ]

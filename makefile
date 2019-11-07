@@ -10,7 +10,7 @@ projectPath := $(orgPath)/$(name)
 ifneq (,$(GO_BIN_PATH))
  gobin := $(GO_BIN_PATH)
 else
- gobin := $(shell if [ -x /opt/golang/go1.9/bin/go ]; then /opt/golang/go1.9/bin/go; fi)
+ gobin := $(shell if [ -x /opt/golang/go1.9/bin/go ]; then echo /opt/golang/go1.9/bin/go; fi)
  ifeq (,$(gobin))
    gobin := go
  endif
@@ -87,6 +87,7 @@ $(buildDir)/.lintSetup:$(lintDeps) $(deps)
 	@mkdir -p $(buildDir)
 	$(gopath)/bin/gometalinter --install >/dev/null && touch $@
 $(buildDir)/run-linter:cmd/run-linter/run-linter.go $(buildDir)/.lintSetup
+	@mkdir -p $(buildDir)
 	$(gobin) build -o $@ $<
 lint:$(buildDir)/.lintSetup $(lintTargets)
 # end lint setup targets
@@ -95,6 +96,7 @@ lint:$(buildDir)/.lintSetup $(lintTargets)
 # userfacing targets for basic build and development operations
 deps:$(deps)
 build:$(deps) $(srcFiles) $(gopath)/src/$(projectPath)
+	@mkdir -p $(buildDir)
 	$(gobin) build $(subst $(name),,$(subst -,/,$(foreach pkg,$(packages),./$(pkg))))
 test:$(testOutput)
 coverage:$(coverageOutput)
@@ -159,11 +161,11 @@ ifneq (,$(RACE_DETECTOR))
 testArgs += -race
 endif
 # testing targets
-$(buildDir)/:
-	mkdir -p $@
-$(buildDir)/output.%.test:$(deps) $(buildDir)/ .FORCE
+$(buildDir)/output.%.test:$(deps) .FORCE
+	@mkdir -p $(buildDir)
 	$(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) | tee $@
 $(buildDir)/output.%.coverage:$(deps) $(buildDir)/ .FORCE
+	@mkdir -p $(buildDir)
 	$(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
 	@-[ -f $@ ] && $(gobin) tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
 $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
