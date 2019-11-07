@@ -7,13 +7,21 @@ projectPath := $(orgPath)/$(name)
 # end project configuration
 
 # start environment setup
+ifneq (,$(GO_BIN_PATH))
+ gobin := $(GO_BIN_PATH)
+else
+ gobin := $(shell if [ -x /opt/golang/go1.9/bin/go ]; then echo /opt/golang/go1.9/bin/go; fi)
+ ifeq (,$(gobin))
+   gobin := go
+ endif
+endif
+
 gopath := $(shell go env GOPATH)
 ifeq ($(OS),Windows_NT)
 gopath := $(shell cygpath -m $(gopath))
 endif
 goos := $(shell go env GOOS)
 goarch := $(shell go env GOARCH)
-gobin := $(shell which go)
 # end environment setup
 
 
@@ -79,7 +87,8 @@ $(buildDir)/.lintSetup:$(lintDeps) $(deps)
 	@mkdir -p $(buildDir)
 	$(gopath)/bin/gometalinter --install >/dev/null && touch $@
 $(buildDir)/run-linter:cmd/run-linter/run-linter.go $(buildDir)/.lintSetup
-	go build -o $@ $<
+	@mkdir -p $(buildDir)
+	$(gobin) build -o $@ $<
 lint:$(buildDir)/.lintSetup $(lintTargets)
 # end lint setup targets
 
@@ -87,8 +96,9 @@ lint:$(buildDir)/.lintSetup $(lintTargets)
 # userfacing targets for basic build and development operations
 deps:$(deps)
 build:$(deps) $(srcFiles) $(gopath)/src/$(projectPath)
-	go build $(subst $(name),,$(subst -,/,$(foreach pkg,$(packages),./$(pkg))))
-test:$(buildDir)/output.test
+	@mkdir -p $(buildDir)
+	$(gobin) build $(subst $(name),,$(subst -,/,$(foreach pkg,$(packages),./$(pkg))))
+test:$(testOutput)
 coverage:$(coverageOutput)
 coverage-html:$(coverageHtmlOutput)
 list-tests:
@@ -151,23 +161,39 @@ ifneq (,$(RACE_DETECTOR))
 testArgs += -race
 endif
 # testing targets
-$(buildDir)/:
-	mkdir -p $@
-$(buildDir)/output.%.test:$(deps) $(buildDir)/ .FORCE
-	go test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) | tee $@
-$(buildDir)/output.test:$(deps) $(buildDir)/ .FORCE
-	go test $(testArgs) ./... | tee $@
+$(buildDir)/output.%.test:$(deps) .FORCE
+	@mkdir -p $(buildDir)
+	$(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) | tee $@
 $(buildDir)/output.%.coverage:$(deps) $(buildDir)/ .FORCE
-	go test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
-	@-[ -f $@ ] && go tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
+	@mkdir -p $(buildDir)
+	$(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
+	@-[ -f $@ ] && $(gobin) tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
 $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
-	go tool cover -html=$< -o $@
+	$(gobin)tool cover -html=$< -o $@
 #  targets to generate gotest output from the linter.
 $(buildDir)/output.%.lint:$(buildDir)/run-linter $(deps) $(buildDir)/ .FORCE
 	@./$< --output=$@ --lintArgs='$(lintArgs)' --packages='$*'
 $(buildDir)/output.lint:$(buildDir)/run-linter $(deps) $(buildDir)/ .FORCE
 	@./$< --output="$@" --lintArgs='$(lintArgs)' --packages="$(packages)"
 # end test and coverage artifacts
+
+# mongodb utility targets
+mongodb/.get-mongodb:
+	rm -rf mongodb
+	mkdir -p mongodb
+	cd mongodb && curl "$(MONGODB_URL)" -o mongodb.tgz && $(DECOMPRESS) mongodb.tgz && chmod +x ./mongodb-*/bin/*
+	cd mongodb && mv ./mongodb-*/bin/* . && rm -rf db_files && rm -rf db_logs && mkdir -p db_files && mkdir -p db_logs
+get-mongodb: mongodb/.get-mongodb
+	@touch $<
+start-mongod: mongodb/.get-mongodb
+	./mongodb/mongod --dbpath ./mongodb/db_files --port 27017 --replSet evg --smallfiles --oplogSize 10
+	@echo "waiting for mongod to start up"
+init-rs: mongodb/.get-mongodb
+	./mongodb/mongo --eval 'rs.initiate()'
+check-mongod: mongodb/.get-mongodb
+	./mongodb/mongo --nodb --eval "assert.soon(function(x){try{var d = new Mongo(\"localhost:27017\"); return true}catch(e){return false}}, \"timed out connecting\")"
+	@echo "mongod is up"
+# end mongodb targets
 
 
 # clean and other utility targets
