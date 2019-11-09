@@ -181,6 +181,8 @@ func TestMonitor(t *testing.T) {
 			assert.EqualValues(t, 1, op.Failed)
 		})
 		t.Run("Wrapper", func(t *testing.T) {
+			m, ok := NewBasicMonitor(nil).(*basicMonitor)
+			require.True(t, ok)
 			t.Run("Logging", func(t *testing.T) {
 				nctx, ncancel := context.WithCancel(ctx)
 				defer ncancel()
