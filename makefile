@@ -73,7 +73,7 @@ $(buildDir)/.lintSetup:$(lintDeps)
 $(buildDir)/run-linter:cmd/run-linter/run-linter.go $(buildDir)/.lintSetup
 	@mkdir -p $(buildDir)
 	$(gobin) build -o $@ $<
-lint:$(buildDir)/.lintSetup $(lintTargets)
+lint:$(buildDir)/.lintSetup $(lintTargets) $(lintDeps)
 # end lint setup targets
 
 
