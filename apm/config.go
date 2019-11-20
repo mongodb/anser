@@ -24,6 +24,13 @@ type MonitorConfig struct {
 	Databases   []string
 	Collections []string
 
+	// Tags are added to operations via contexts and permit
+	// more granular annotations. You must specify a tag in Tags
+	// for to track counters. If AllTags is set, all tags are
+	// tracked and reported.
+	Tags    []string
+	AllTags bool
+
 	// Namespaces allow you to declare a specific database and
 	// collection name as a pair. When specified, only events that
 	// match the namespace will be collected. Namespace filtering
@@ -46,7 +53,6 @@ func stringSliceContains(slice []string, item string) bool {
 
 	return false
 }
-
 func (c *MonitorConfig) shouldTrack(e eventKey) bool {
 	if c == nil {
 		return true
