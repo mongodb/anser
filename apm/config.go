@@ -26,7 +26,7 @@ type MonitorConfig struct {
 
 	// Tags are added to operations via contexts and permit
 	// more granular annotations. You must specify a tag in Tags
-	// for to track counters. If AllTags is set, all tags are
+	// for to tracked counters. If AllTags is set, all tags are
 	// tracked and reported.
 	Tags    []string
 	AllTags bool

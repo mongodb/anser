@@ -16,7 +16,7 @@ func GetTags(ctx context.Context) []string {
 	val := ctx.Value(tagsContextKey)
 	tags, ok := val.([]string)
 	if !ok {
-		return []string{}
+		return nil
 	}
 	return tags
 }

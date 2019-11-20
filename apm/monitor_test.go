@@ -225,7 +225,7 @@ func TestMonitor(t *testing.T) {
 				assert.Equal(t, 1, len(event.data))
 			}
 		})
-		t.Run("PropgatesSettings", func(t *testing.T) {
+		t.Run("PropagatesSettings", func(t *testing.T) {
 			conf := &MonitorConfig{AllTags: true, Tags: []string{"41", "1"}}
 			monitor := NewBasicMonitor(conf)
 			event, ok := monitor.Rotate().(*eventWindow)
