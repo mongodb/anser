@@ -23,7 +23,7 @@ type eventRecord struct {
 	Succeeded int64            `bson:"succeeded" json:"succeeded" yaml:"succeeded"`
 	Duration  time.Duration    `bson:"duration" json:"duration" yaml:"duration"`
 	Tags      map[string]int64 `bson:"tags" json:"tags" yaml:"tags"`
-	mutex     sync.Mutex
+	mutex     sync.RWMutex
 }
 
 type eventWindow struct {
@@ -51,6 +51,7 @@ func (e *eventWindow) Message() message.Composer {
 	}
 	colls := make([]output, 0, len(e.data))
 	for k, v := range e.data {
+		v.mutex.RLock()
 		colls = append(colls, output{
 			Operation:  k.String(),
 			Database:   k.dbName,
@@ -61,6 +62,7 @@ func (e *eventWindow) Message() message.Composer {
 			Failed:     v.Failed,
 			Tags:       v.Tags,
 		})
+		v.mutex.RUnlock()
 	}
 	out["collections"] = colls
 
@@ -78,6 +80,7 @@ func (e *eventWindow) Document() *birch.Document {
 	payload := birch.DC.Make(len(e.data))
 
 	for k, v := range e.data {
+		v.mutex.RLock()
 		doc := birch.DC.Make(3+e.numTags(v)).
 			Append(birch.EC.Int64("failed", v.Failed),
 				birch.EC.Int64("success", v.Succeeded),
@@ -92,7 +95,7 @@ func (e *eventWindow) Document() *birch.Document {
 				doc.Append(birch.EC.Int64(t, v.Tags[t]))
 			}
 		}
-
+		v.mutex.RUnlock()
 		payload.Append(birch.EC.SubDocument(k.String(), doc.Sorted()))
 	}
 
