@@ -16,15 +16,16 @@ else
  endif
 endif
 
-gopath := $(shell go env GOPATH)
+gopath := $(GOPATH)
+ifeq (,$(gopath))
+gopath := $(shell $(gobin) env GOPATH)
+endif
 ifeq ($(OS),Windows_NT)
 gopath := $(shell cygpath -m $(gopath))
 endif
-goos := $(shell go env GOOS)
-goarch := $(shell go env GOARCH)
+goos := $(shell $(gobin) env GOOS)
+goarch := $(shell $(gobin) env GOARCH)
 # end environment setup
-
-
 
 # start linting configuration
 #   package, testing, and linter dependencies specified
@@ -33,7 +34,9 @@ goarch := $(shell go env GOARCH)
 lintDeps := github.com/alecthomas/gometalinter
 #   include test files and give13m --vendor --aggregate --sort=line
 lintArgs := --tests --deadline=14m --vendor
-lintArgs += --enable-gc --disable=golint --disable=gocyclo
+lintArgs += --enable-gc --disable="golint" --disable="gocyclo"
+lintArgs += --disable="interfacer" --disable="maligned" --disable="structcheck"
+lintArgs += --disable="unconvert" --disable="varcheck"
 #   gotype produces false positives because it reads .a files which
 #   are rarely up to date.
 lintArgs += --skip="$(buildDir)" --skip="buildscripts" --skip="$(gopath)" --skip="vendor"
@@ -61,15 +64,14 @@ srcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -n
 testSrcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -path "*\#*")
 $(gopath)/src/%:
 	@-[ ! -d $(gopath) ] && mkdir -p $(gopath) || true
-	go get $(subst $(gopath)/src/,,$@)
+	$(gobin) get $(subst $(gopath)/src/,,$@)
 # end dependency installation tools
-
 
 # lint setup targets
 lintDeps := $(addprefix $(gopath)/src/,$(lintDeps))
 $(buildDir)/.lintSetup:$(lintDeps)
 	@mkdir -p $(buildDir)
-	$(gopath)/bin/gometalinter --install >/dev/null && touch $@
+	$(if $(GO_BIN_PATH),export PATH=$(shell dirname $(GO_BIN_PATH)):${PATH} && ,)$(gopath)/bin/gometalinter --install >/dev/null && touch $@
 $(buildDir)/run-linter:cmd/run-linter/run-linter.go $(buildDir)/.lintSetup
 	@mkdir -p $(buildDir)
 	$(gobin) build -o $@ $<
@@ -78,7 +80,7 @@ lint:$(buildDir)/.lintSetup $(lintTargets) $(lintDeps)
 
 
 # userfacing targets for basic build and development operations
-build:$(srcFiles) $(gopath)/src/$(projectPath)
+$(buildDir):$(srcFiles) $(gopath)/src/$(projectPath)
 	@mkdir -p $(buildDir)
 	$(gobin) build $(subst $(name),,$(subst -,/,$(foreach pkg,$(packages),./$(pkg))))
 test:$(testOutput)
@@ -150,16 +152,16 @@ endif
 $(buildDir)/output.%.test: .FORCE
 	@mkdir -p $(buildDir)
 	$(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) | tee $@
-$(buildDir)/output.%.coverage: $(buildDir)/ .FORCE
+$(buildDir)/output.%.coverage: $(buildDir) .FORCE
 	@mkdir -p $(buildDir)
 	$(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
 	@-[ -f $@ ] && $(gobin) tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
 $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
 	$(gobin) tool cover -html=$< -o $@
 #  targets to generate gotest output from the linter.
-$(buildDir)/output.%.lint:$(buildDir)/run-linter $(buildDir)/ .FORCE
+$(buildDir)/output.%.lint:$(buildDir)/run-linter $(buildDir) .FORCE
 	@./$< --output=$@ --lintArgs='$(lintArgs)' --packages='$*'
-$(buildDir)/output.lint:$(buildDir)/run-linter $(buildDir)/ .FORCE
+$(buildDir)/output.lint:$(buildDir)/run-linter $(buildDir) .FORCE
 	@./$< --output="$@" --lintArgs='$(lintArgs)' --packages="$(packages)"
 # end test and coverage artifacts
 
