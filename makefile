@@ -39,7 +39,7 @@ lintArgs += --disable="interfacer" --disable="maligned" --disable="structcheck"
 lintArgs += --disable="unconvert" --disable="varcheck"
 #   gotype produces false positives because it reads .a files which
 #   are rarely up to date.
-lintArgs += --skip="$(buildDir)" --skip="buildscripts" --skip="$(gopath)"
+lintArgs += --skip="$(buildDir)" --skip="buildscripts" --skip="$(gopath)" --skip="vendor"
 #  add and configure additional linters
 lintArgs += --enable="misspell" # --enable="lll" --line-length=100
 #  suppress some lint errors (logging methods could return errors, and error checking in defers.)
@@ -75,7 +75,7 @@ $(buildDir)/.lintSetup:$(lintDeps)
 $(buildDir)/run-linter:cmd/run-linter/run-linter.go $(buildDir)/.lintSetup
 	@mkdir -p $(buildDir)
 	$(gobin) build -o $@ $<
-lint:$(buildDir)/.lintSetup $(lintTargets)
+lint:$(buildDir)/.lintSetup $(lintTargets) $(lintDeps)
 # end lint setup targets
 
 
@@ -157,7 +157,7 @@ $(buildDir)/output.%.coverage: $(buildDir) .FORCE
 	$(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
 	@-[ -f $@ ] && $(gobin) tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
 $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
-	$(gobin)tool cover -html=$< -o $@
+	$(gobin) tool cover -html=$< -o $@
 #  targets to generate gotest output from the linter.
 $(buildDir)/output.%.lint:$(buildDir)/run-linter $(buildDir) .FORCE
 	@./$< --output=$@ --lintArgs='$(lintArgs)' --packages='$*'

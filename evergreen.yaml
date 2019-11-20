@@ -151,11 +151,11 @@ buildvariants:
 
   - name: lint
     display_name: Lint (Arch Linux)
-    run_on:
-      - archlinux-test
-    expansion:
+    expansions:
       GO_BIN_PATH: /opt/golang/go1.10/bin/go
       GOROOT: /opt/golang/go1.10
+    run_on:
+      - archlinux-test
     tasks: [ "lintGroup" ]
 
   - name: ubuntu1604
