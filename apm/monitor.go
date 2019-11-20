@@ -118,13 +118,7 @@ func (m *basicMonitor) DriverAPM() *event.CommandMonitor {
 			event.Succeeded++
 			event.Duration += time.Duration(e.DurationNanos)
 
-			if m.config != nil {
-				for _, tag := range GetTags(ctx) {
-					if m.config.AllTags || stringSliceContains(m.config.Tags, tag) {
-						event.Tags[tag]++
-					}
-				}
-			}
+			m.addTags(ctx, event)
 		},
 		Failed: func(ctx context.Context, e *event.CommandFailedEvent) {
 			event := m.getRecord(e.RequestID)
@@ -138,14 +132,20 @@ func (m *basicMonitor) DriverAPM() *event.CommandMonitor {
 			event.Failed++
 			event.Duration += time.Duration(e.DurationNanos)
 
-			if m.config != nil {
-				for _, tag := range GetTags(ctx) {
-					if m.config.AllTags || stringSliceContains(m.config.Tags, tag) {
-						event.Tags[tag]++
-					}
-				}
-			}
+			m.addTags(ctx, event)
 		},
+	}
+}
+
+func (m *basicMonitor) addTags(ctx context.Context, event *eventRecord) {
+	if m.config == nil {
+		return
+	}
+
+	for _, tag := range GetTags(ctx) {
+		if m.config.AllTags || stringSliceContains(m.config.Tags, tag) {
+			event.Tags[tag]++
+		}
 	}
 }
 

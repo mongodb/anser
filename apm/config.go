@@ -96,14 +96,14 @@ func (c *MonitorConfig) window() map[eventKey]*eventRecord {
 	for _, db := range c.Databases {
 		for _, coll := range c.Collections {
 			for _, cmd := range c.Commands {
-				out[eventKey{dbName: db, collName: coll, cmdName: cmd}] = &eventRecord{}
+				out[eventKey{dbName: db, collName: coll, cmdName: cmd}] = &eventRecord{Tags: map[string]int64{}}
 			}
 		}
 	}
 
 	for _, ns := range c.Namespaces {
 		for _, cmd := range c.Commands {
-			out[eventKey{dbName: ns.DB, collName: ns.Collection, cmdName: cmd}] = &eventRecord{}
+			out[eventKey{dbName: ns.DB, collName: ns.Collection, cmdName: cmd}] = &eventRecord{Tags: map[string]int64{}}
 		}
 	}
 

@@ -15,7 +15,7 @@ type eventKey struct {
 	collName string
 }
 
-func (k eventKey) String() string { return fmt.Sprintf("%s.%s.%s.", k.dbName, k.collName, k.cmdName) }
+func (k eventKey) String() string { return fmt.Sprintf("%s.%s.%s", k.dbName, k.collName, k.cmdName) }
 func (k eventKey) isNil() bool    { return k.dbName == "" && k.cmdName == "" && k.collName == "" }
 
 type eventRecord struct {
@@ -93,7 +93,7 @@ func (e *eventWindow) Document() *birch.Document {
 			}
 		}
 
-		payload.Append(birch.EC.SubDocument(k.String(), doc))
+		payload.Append(birch.EC.SubDocument(k.String(), doc.Sorted()))
 	}
 
 	return birch.DC.Elements(
