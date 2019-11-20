@@ -36,7 +36,7 @@ lintArgs := --tests --deadline=14m --vendor
 lintArgs += --enable-gc --disable=golint --disable=gocyclo
 #   gotype produces false positives because it reads .a files which
 #   are rarely up to date.
-lintArgs += --skip="$(buildDir)" --skip="buildscripts" --skip="$(gopath)"
+lintArgs += --skip="$(buildDir)" --skip="buildscripts" --skip="$(gopath)" --skip="vendor"
 #  add and configure additional linters
 lintArgs += --enable="misspell" # --enable="lll" --line-length=100
 #  suppress some lint errors (logging methods could return errors, and error checking in defers.)
