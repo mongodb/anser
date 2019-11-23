@@ -58,7 +58,7 @@ type simpleMigrationGenerator struct {
 }
 
 func (j *simpleMigrationGenerator) Run(ctx context.Context) {
-	defer j.FinishMigration(j.ID(), &j.Base)
+	defer j.FinishMigration(ctx, j.ID(), &j.Base)
 
 	env := j.Env()
 
