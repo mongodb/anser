@@ -85,6 +85,7 @@ func (e *legacyMigrationBase) FinishMigration(ctx context.Context, name string, 
 			"id":      j.ID(),
 			"name":    name,
 			"error":   err.Error(),
+			"type":    "legacy",
 		})
 		return
 	}

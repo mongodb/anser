@@ -15,21 +15,31 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	mgo "gopkg.in/mgo.v2"
 )
 
 type MigrationHelperSuite struct {
-	env     *mock.Environment
-	mh      *legacyMigrationBase
-	session db.Session
-	client  client.Client
-	queue   amboy.Queue
-	cancel  context.CancelFunc
+	env          *mock.Environment
+	mh           *migrationBase
+	session      db.Session
+	client       client.Client
+	queue        amboy.Queue
+	cancel       context.CancelFunc
+	preferClient bool
 	suite.Suite
 }
 
-func TestMigrationHelperSuite(t *testing.T) {
-	suite.Run(t, new(MigrationHelperSuite))
+func TestLegacyMigrationHelperSuite(t *testing.T) {
+	s := new(MigrationHelperSuite)
+	suite.Run(t, s)
+}
+
+func TestClientMigrationHelperSuite(t *testing.T) {
+	s := new(MigrationHelperSuite)
+	s.preferClient = true
+	suite.Run(t, s)
 }
 
 func (s *MigrationHelperSuite) SetupSuite() {
@@ -41,6 +51,11 @@ func (s *MigrationHelperSuite) SetupSuite() {
 	ses, err := mgo.DialWithTimeout("mongodb://localhost:27017", 10*time.Millisecond)
 	s.Require().NoError(err)
 	s.session = db.WrapSession(ses)
+	cl, err := mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27017").SetConnectTimeout(100 * time.Millisecond))
+	s.Require().NoError(err)
+	err = cl.Connect(ctx)
+	s.Require().NoError(err)
+	s.client = client.WrapClient(cl)
 }
 
 func (s *MigrationHelperSuite) TearDownSuite() {
@@ -51,7 +66,8 @@ func (s *MigrationHelperSuite) SetupTest() {
 	s.env = mock.NewEnvironment()
 	s.env.MetaNS = model.Namespace{DB: "anserDB", Collection: "anserMeta"}
 	s.env.Queue = s.queue
-	s.mh = NewMigrationHelper(s.env).(*legacyMigrationBase)
+	s.env.ShouldPreferClient = s.preferClient
+	s.mh = NewMigrationHelper(s.env).(*migrationBase)
 
 	s.NoError(s.env.Setup(s.queue, s.client, s.session))
 }
@@ -65,27 +81,8 @@ func (s *MigrationHelperSuite) TestSaveMigrationEvent() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s.env.SessionError = errors.New("session error")
-
-	err := errors.Cause(s.mh.SaveMigrationEvent(ctx, nil))
+	err := s.mh.SaveMigrationEvent(ctx, &model.MigrationMetadata{ID: "foo"})
 	s.Error(err)
-	s.Equal(err, s.env.SessionError)
-	s.env.SessionError = nil
-
-	err = s.mh.SaveMigrationEvent(ctx, &model.MigrationMetadata{})
-	s.NoError(err)
-
-	db := s.env.Session.DBs["anserDB"]
-	s.NotNil(db)
-	coll, ok := db.Collections["anserMeta"]
-	s.True(ok)
-	s.NotNil(coll)
-	s.Len(coll.InsertedDocs, 1)
-	coll.FailWrites = true
-	err = s.mh.SaveMigrationEvent(ctx, &model.MigrationMetadata{})
-	s.Error(err)
-	s.Equal(errors.Cause(err).Error(), "writes fail")
-	s.Len(coll.InsertedDocs, 1)
 }
 
 func (s *MigrationHelperSuite) TestFinishMigrationIsTracked() {
@@ -101,41 +98,19 @@ func (s *MigrationHelperSuite) TestFinishMigrationIsTracked() {
 
 	status = base.Status()
 	s.True(status.Completed)
-
-	db := s.env.Session.DBs["anserDB"]
-	s.NotNil(db)
-	coll, ok := db.Collections["anserMeta"]
-	s.True(ok)
-	s.NotNil(coll)
-	s.Len(coll.InsertedDocs, 1)
-	doc, ok := coll.InsertedDocs[0].(*model.MigrationMetadata)
-	s.True(ok)
-	s.Equal(doc.Migration, "foo")
 }
 
 func (s *MigrationHelperSuite) TestGetMigrationEvents() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s.env.SessionError = errors.New("session error")
 	query := map[string]interface{}{"foo": 1}
 
 	iter := s.mh.GetMigrationEvents(ctx, query)
-	err := iter.Err()
-	s.NotNil(iter)
-	s.Equal(errors.Cause(err), s.env.SessionError)
-	s.env.SessionError = nil
+	s.Require().NotNil(iter)
 
-	iter = s.mh.GetMigrationEvents(ctx, query)
-	err = iter.Err()
-	mi := iter.(*legacyMigrationMetadataIterator).iter.(db.CombinedCloser).Iterator.(*mock.Iterator)
-	s.NotNil(iter)
+	err := iter.Err()
 	s.NoError(err)
-	s.Equal(mi.Query.Query, query)
-	coll, ok := s.env.Session.DBs["anserDB"].Collections["anserMeta"]
-	s.True(ok)
-	s.NotNil(coll)
-	s.Len(coll.Queries, 1)
 }
 
 func (s *MigrationHelperSuite) TestErrorCaseInMigrationFinishing() {
@@ -147,9 +122,9 @@ func (s *MigrationHelperSuite) TestErrorCaseInMigrationFinishing() {
 	env.MetaNS = ns
 	env.Session.DB(ns.DB).C(ns.Collection).(*mock.LegacyCollection).FailWrites = true
 
-	mh := NewMigrationHelper(env).(*legacyMigrationBase)
+	mh := NewMigrationHelper(env).(*migrationBase)
 
-	base := &job.Base{}
+	base := &job.Base{TaskID: "jobid"}
 	s.False(base.HasErrors())
 	s.False(base.Status().Completed)
 	mh.FinishMigration(ctx, "foo", base)
@@ -164,23 +139,10 @@ func (s *MigrationHelperSuite) TestPendingMigrationsWithoutConfiguration() {
 	s.Zero(s.mh.PendingMigrationOperations(ctx, model.Namespace{DB: "dbname", Collection: "collname"}, map[string]interface{}{}))
 }
 
-func (s *MigrationHelperSuite) TestPendingMigrationsWithDBError() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	s.env.SessionError = errors.New("failed")
-	ns := model.Namespace{DB: "dbname", Collection: "collname"}
-	s.Equal(-1, s.mh.PendingMigrationOperations(ctx, ns, map[string]interface{}{}))
-	s.env.SessionError = nil
-
-	s.env.Session.DB(ns.DB).C(ns.Collection).(*mock.LegacyCollection).QueryError = errors.New("failed")
-	s.Equal(-1, s.mh.PendingMigrationOperations(ctx, ns, map[string]interface{}{}))
-}
-
 func TestDefaultEnvironmentAndMigrationHelperState(t *testing.T) {
 	assert := assert.New(t)
 	env := &envState{}
-	mh := NewMigrationHelper(env).(*legacyMigrationBase)
+	mh := NewMigrationHelper(env).(*migrationBase)
 	assert.Equal(env, mh.Env())
 	assert.Equal(env, mh.env)
 
@@ -189,4 +151,20 @@ func TestDefaultEnvironmentAndMigrationHelperState(t *testing.T) {
 	mh.env = nil
 	assert.Equal(globalEnv, mh.Env())
 	assert.NotEqual(mh.Env(), env)
+}
+
+func TestErrorIterator(t *testing.T) {
+	iter := &errorMigrationIterator{}
+
+	assert.NoError(t, iter.Err())
+	assert.NoError(t, iter.Close())
+	assert.False(t, iter.Next(context.Background()))
+	assert.Nil(t, iter.Item())
+
+	iter.err = errors.New("error")
+
+	assert.Error(t, iter.Err())
+	assert.NoError(t, iter.Close())
+	assert.False(t, iter.Next(context.Background()))
+	assert.Nil(t, iter.Item())
 }

@@ -41,5 +41,6 @@ func NewMigrationHelper(e Environment) MigrationHelper {
 		return NewClientMigrationHelper(e)
 	}
 
-	return NewLegacyMigrationHelper(e)
+	return NewClientMigrationHelper(e)
+	// return NewLegacyMigrationHelper(e)
 }

@@ -87,7 +87,6 @@ func (j *simpleMigrationGenerator) Run(ctx context.Context) {
 		}
 
 		network.AddGroup(j.ID(), j.generateJobs(ctx, env, cursor))
-
 	} else {
 		session, err := env.GetSession()
 		if err != nil {
