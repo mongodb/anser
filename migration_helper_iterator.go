@@ -17,7 +17,6 @@ import (
 type cursorMigrationMetadataIterator struct {
 	cursor  client.Cursor
 	catcher grip.Catcher
-	item    *model.MigrationMetadata
 	ctx     context.Context
 }
 
