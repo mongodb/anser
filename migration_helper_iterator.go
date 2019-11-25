@@ -21,13 +21,14 @@ type cursorMigrationMetadataIterator struct {
 	ctx     context.Context
 }
 
-func (c *cursorMigrationMetadataIterator) Err() error {
-	c.catcher.Add(c.cursor.Err())
-	return c.catcher.Resolve()
+func (c *cursorMigrationMetadataIterator) Err() error   { return c.catcher.Resolve() }
+func (c *cursorMigrationMetadataIterator) Close() error { return c.cursor.Close(context.TODO()) }
+func (c *cursorMigrationMetadataIterator) Next(ctx context.Context) bool {
+	ret := c.cursor.Next(ctx)
+	c.catcher.AddWhen(!ret, c.cursor.Err())
+	return ret
 }
 
-func (c *cursorMigrationMetadataIterator) Close() error                  { return c.cursor.Close(context.TODO()) }
-func (c *cursorMigrationMetadataIterator) Next(ctx context.Context) bool { return c.cursor.Next(ctx) }
 func (c *cursorMigrationMetadataIterator) Item() *model.MigrationMetadata {
 	o := &model.MigrationMetadata{}
 	c.catcher.Add(c.cursor.Decode(o))
