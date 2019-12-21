@@ -22,11 +22,11 @@ type WriterCreator func(context.Context, string) (io.WriteCloser, error)
 // collection. Query, Sort, and Limit are optional, but allow you to
 // constrain the backup.
 type Options struct {
-	NS     model.Namespace
-	Target WriterCreator
-	Query  interface{}
-	Sort   interface{}
-	Limit  int64
+	NS     model.Namespace `bson:"ns" json:"ns" yaml:"ns"`
+	Target WriterCreator   `bson:"-" json:"-" yaml:"-"`
+	Query  interface{}     `bson:"query" json:"query" yaml:"query"`
+	Sort   interface{}     `bson:"sort" json:"sort" yaml:"sort"`
+	Limit  int64           `bson:"limit" json:"limit" yaml:"limit"`
 }
 
 // Collection creates a backup of a collection using the options to
