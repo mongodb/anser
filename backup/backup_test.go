@@ -3,6 +3,7 @@ package backup
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"math/rand"
@@ -194,6 +195,30 @@ func TestBackup(t *testing.T) {
 			count++
 		}
 		assert.EqualValues(t, 0, count)
+	})
+	t.Run("IndexesOnly", func(t *testing.T) {
+		defer func() { require.NoError(t, client.Database("foo").Collection("bat").Drop(ctx)) }()
+
+		res, err := client.Database("foo").Collection("bat").InsertMany(ctx, produceDocuments(nil, 10))
+		require.NoError(t, err)
+		require.Len(t, res.InsertedIDs, 10)
+
+		err = Collection(ctx, client, Options{
+			NS:          model.Namespace{DB: "foo", Collection: "bat"},
+			Target:      files.Target,
+			IndexesOnly: true,
+		})
+		require.NoError(t, err)
+		require.NotContains(t, files, "foo/bat.bson")
+		require.Contains(t, files, "foo/bat.metadata.json")
+
+		doc := birch.DC.New()
+		err = json.Unmarshal(files["foo/bat.metadata.json"].Buffer.Bytes(), doc)
+		require.NoError(t, err)
+
+		require.Equal(t, 0, doc.Lookup("options").MutableDocument().Len())
+		require.Equal(t, 1, doc.Lookup("indexes").MutableArray().Len())
+		require.Zero(t, doc.Lookup("uuid").StringValue())
 	})
 	t.Run("ProblmeGettingTarget", func(t *testing.T) {
 		err = Collection(ctx, client, Options{

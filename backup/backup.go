@@ -22,11 +22,12 @@ type WriterCreator func(context.Context, string) (io.WriteCloser, error)
 // collection. Query, Sort, and Limit are optional, but allow you to
 // constrain the backup.
 type Options struct {
-	NS     model.Namespace `bson:"ns" json:"ns" yaml:"ns"`
-	Target WriterCreator   `bson:"-" json:"-" yaml:"-"`
-	Query  interface{}     `bson:"query" json:"query" yaml:"query"`
-	Sort   interface{}     `bson:"sort" json:"sort" yaml:"sort"`
-	Limit  int64           `bson:"limit" json:"limit" yaml:"limit"`
+	NS          model.Namespace `bson:"ns" json:"ns" yaml:"ns"`
+	Target      WriterCreator   `bson:"-" json:"-" yaml:"-"`
+	Query       interface{}     `bson:"query" json:"query" yaml:"query"`
+	Sort        interface{}     `bson:"sort" json:"sort" yaml:"sort"`
+	Limit       int64           `bson:"limit" json:"limit" yaml:"limit"`
+	IndexesOnly bool            `bson:"indexes_only" json:"indexes_only" yaml:"indexes_only"`
 }
 
 // Collection creates a backup of a collection using the options to
@@ -73,6 +74,10 @@ func (opts *Options) getCursor(ctx context.Context, client *mongo.Client) (*mong
 }
 
 func (opts *Options) flushData(ctx context.Context, client *mongo.Client) error {
+	if opts.IndexesOnly {
+		return nil
+	}
+
 	catcher := grip.NewCatcher()
 
 	cursor, err := opts.getCursor(ctx, client)
