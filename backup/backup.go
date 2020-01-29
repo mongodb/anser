@@ -128,7 +128,7 @@ func (opts *Options) flushData(ctx context.Context, client *mongo.Client) error 
 		}
 
 		seen++
-		if opts.EnableLogging && seen&1000 == 0 {
+		if opts.EnableLogging && seen%1000 == 0 {
 			grip.Info(message.Fields{
 				"ns":       opts.NS.String(),
 				"dur_secs": time.Since(startAt).Seconds(),
