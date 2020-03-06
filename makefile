@@ -48,7 +48,6 @@ $(gopath)/src/%:
 # lint setup targets
 lintDeps := $(buildDir)/golangci-lint $(buildDir)/.lintSetup
 $(buildDir)/.lintSetup:$(buildDir)/golangci-lint
-	$(gobin) get github.com/evergreen-ci/evg-lint/...
 	@mkdir -p $(buildDir)
 	@touch $@
 $(buildDir)/golangci-lint:
@@ -66,6 +65,7 @@ $(buildDir):$(srcFiles) $(gopath)/src/$(projectPath)
 test:$(testOutput)
 coverage:$(coverageOutput)
 coverage-html:$(coverageHtmlOutput)
+lint:$(lintTargets)
 list-tests:
 	@echo -e "test targets:" $(foreach target,$(packages),\\n\\ttest-$(target))
 phony := lint build test coverage coverage-html
