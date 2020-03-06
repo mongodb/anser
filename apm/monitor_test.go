@@ -211,7 +211,9 @@ func TestMonitor(t *testing.T) {
 	})
 	t.Run("Rotate", func(t *testing.T) {
 		t.Run("Timestamp", func(t *testing.T) {
+			m.currentLock.Lock() // We have to lock because race detector complains
 			startedAt := m.currentStartAt
+			m.currentLock.Unlock()
 			_ = m.Rotate()
 			assert.True(t, startedAt.Before(m.currentStartAt))
 		})
