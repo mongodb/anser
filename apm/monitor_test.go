@@ -288,7 +288,7 @@ func resetMonitor(t *testing.T, in Monitor) {
 	}
 }
 
-func buildCommand(t *testing.T, doc *birch.Document) bson.Raw {
+func buildCommand(t *testing.T, doc *birch.Document) bson.Raw { //nolint: interfacer
 	raw, err := doc.MarshalBSON()
 	require.NoError(t, err)
 	return bson.Raw(raw)
