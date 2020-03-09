@@ -25,6 +25,7 @@ gopath := $(shell cygpath -m $(gopath))
 endif
 goos := $(shell $(gobin) env GOOS)
 goarch := $(shell $(gobin) env GOARCH)
+goEnv := GOPATH=$(gopath) $(if $(GO_BIN_PATH),PATH="$(shell dirname $(GO_BIN_PATH)):$(PATH)")
 # end environment setup
 
 # start dependency installation tools
@@ -50,14 +51,14 @@ $(buildDir)/golangci-lint:
 	@curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/76a82c6ed19784036bbf2d4c84d0228ca12381a4/install.sh | sh -s -- -b $(buildDir) v1.23.8 >/dev/null 2>&1
 $(buildDir)/run-linter:cmd/run-linter/run-linter.go $(buildDir)/.lintSetup
 	@mkdir -p $(buildDir)
-	$(gobin) build -o $@ $<
+	$(goEnv) $(gobin) build -o $@ $<
 # end lint setup targets
 
 
 # userfacing targets for basic build and development operations
 $(buildDir):
 	@mkdir -p $(buildDir)
-	$(gobin) build $(subst $(name),,$(subst -,/,$(foreach pkg,$(packages),./$(pkg))))
+	$(goEnv) $(gobin) build $(subst $(name),,$(subst -,/,$(foreach pkg,$(packages),./$(pkg))))
 test:$(testOutput)
 coverage:$(coverageOutput)
 coverage-html:$(coverageHtmlOutput)
@@ -132,13 +133,13 @@ endif
 # testing targets
 $(buildDir)/output.%.test: .FORCE
 	@mkdir -p $(buildDir)
-	$(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) | tee $@
+	$(goEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) | tee $@
 $(buildDir)/output.%.coverage: $(buildDir) .FORCE
 	@mkdir -p $(buildDir)
-	$(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
-	@-[ -f $@ ] && $(gobin) tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
+	$(goEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
+	@-[ -f $@ ] && $(goEnv) $(gobin) tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
 $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
-	$(gobin) tool cover -html=$< -o $@
+	$(goEnv) $(gobin) tool cover -html=$< -o $@
 #  targets to generate gotest output from the linter.
 $(buildDir)/output.%.lint:$(buildDir)/run-linter $(buildDir) .FORCE
 	@./$< --output=$@ --lintBin="$(buildDir)/golangci-lint" --packages='$*'
