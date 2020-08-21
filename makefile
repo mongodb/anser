@@ -138,7 +138,7 @@ $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
 #  targets to generate gotest output from the linter.
 $(buildDir)/output.%.lint:$(buildDir)/run-linter .FORCE
 	@# We have to handle the PATH specially for CI, because if the PATH has a different version of Go in it, it'll break.
-	@$(if $(GO_BIN_PATH),PATH="$(shell dirname $(GO_BIN_PATH)):$(PATH)")./$< --output=$@ --lintBin="$(buildDir)/golangci-lint" --packages='$*'
+	@$(if $(GO_BIN_PATH),PATH="$(shell dirname $(GO_BIN_PATH)):$(PATH)") ./$< --output=$@ --lintBin="$(buildDir)/golangci-lint" --packages='$*'
 # end test and coverage artifacts
 
 # mongodb utility targets
