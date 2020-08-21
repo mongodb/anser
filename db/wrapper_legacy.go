@@ -21,8 +21,11 @@ type databaseLegacyWrapper struct {
 	*mgo.Database
 }
 
-func (d databaseLegacyWrapper) Name() string          { return d.Database.Name }
-func (d databaseLegacyWrapper) C(n string) Collection { return collectionLegacyWrapper{d.Database.C(n)} }
+func (d databaseLegacyWrapper) Name() string { return d.Database.Name }
+
+func (d databaseLegacyWrapper) C(n string) Collection {
+	return collectionLegacyWrapper{Collection: d.Database.C(n)}
+}
 
 type collectionLegacyWrapper struct {
 	*mgo.Collection
