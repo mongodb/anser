@@ -7,11 +7,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 
+	"github.com/google/shlex"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 type result struct {
@@ -79,18 +80,25 @@ func main() {
 	packages = strings.Split(strings.Replace(packageList, "-", "/", -1), " ")
 	dirname, _ := os.Getwd()
 	cwd := filepath.Base(dirname)
-	lintArgs += fmt.Sprintf(" --concurrency=%d", runtime.NumCPU()/2)
 
 	for _, pkg := range packages {
 		pkgDir := "./"
 		if cwd != pkg {
 			pkgDir += pkg
 		}
-		args := []string{lintBin, "run", lintArgs, pkgDir}
+		splitLintArgs, err := shlex.Split(lintArgs)
+		if err != nil {
+			grip.Error(errors.Wrapf(err, "splitting lint args '%s'", lintArgs))
+			os.Exit(1)
+		}
+		args := []string{lintBin, "run"}
+		args = append(args, splitLintArgs...)
+		args = append(args, pkgDir)
 
 		startAt := time.Now()
-		cmd := strings.Join(args, " ")
-		out, err := exec.Command("sh", "-c", cmd).CombinedOutput()
+		cmd := exec.Command(args[0], args[1:]...)
+		cmd.Dir = dirname
+		out, err := cmd.CombinedOutput()
 		r := &result{
 			cmd:      strings.Join(args, " "),
 			name:     "lint-" + strings.Replace(pkg, "/", "-", -1),
@@ -98,9 +106,12 @@ func main() {
 			duration: time.Since(startAt),
 			output:   strings.Split(string(out), "\n"),
 		}
+
 		for _, linter := range customLinters {
 			customLinterStart := time.Now()
-			out, err = exec.Command("sh", "-c", fmt.Sprintf("%s %s", linter, pkgDir)).CombinedOutput()
+			cmd := exec.Command(linter, pkgDir)
+			cmd.Dir = dirname
+			out, err := cmd.CombinedOutput()
 			r.passed = r.passed && err == nil
 			r.duration += time.Since(customLinterStart)
 			r.output = append(r.output, strings.Split(string(out), "\n")...)
