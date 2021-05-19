@@ -26,6 +26,7 @@ endif
 export GOCACHE := $(gocache)
 export GOPATH := $(gopath)
 export GOROOT := $(goroot)
+export GO111MODULE := off
 # end environment setup
 
 # Ensure the build directory exists, since most targets require it.
