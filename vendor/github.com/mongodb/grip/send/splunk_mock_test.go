@@ -2,8 +2,9 @@ package send
 
 import (
 	"errors"
+	"net/http"
 
-	"github.com/fuyufjh/splunk-hec-go"
+	hec "github.com/fuyufjh/splunk-hec-go"
 )
 
 type splunkClientMock struct {
@@ -14,7 +15,7 @@ type splunkClientMock struct {
 	httpSent int
 }
 
-func (c *splunkClientMock) Create(string, string, string) error {
+func (c *splunkClientMock) Create(client *http.Client, info SplunkConnectionInfo) error {
 	if c.failCreate {
 		return errors.New("creation failed")
 	}

@@ -6,12 +6,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
-	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -25,7 +25,7 @@ type SimpleRemoteOrderedSuite struct {
 	queue             remoteQueue
 	tearDown          func() error
 	driver            remoteQueueDriver
-	driverConstructor func() remoteQueueDriver
+	driverConstructor func() (remoteQueueDriver, error)
 	canceler          context.CancelFunc
 	suite.Suite
 }
@@ -35,10 +35,9 @@ func TestSimpleRemoteOrderedSuiteMongoDB(t *testing.T) {
 }
 
 func (s *SimpleRemoteOrderedSuite) SetupSuite() {
-	name := "test-" + uuid.NewV4().String()
-	opts := DefaultMongoDBOptions()
-	opts.DB = "amboy_test"
-	s.driverConstructor = func() remoteQueueDriver {
+	name := "test-" + uuid.New().String()
+	opts := defaultMongoDBTestOptions()
+	s.driverConstructor = func() (remoteQueueDriver, error) {
 		return newMongoDriver(name, opts)
 	}
 
@@ -46,7 +45,7 @@ func (s *SimpleRemoteOrderedSuite) SetupSuite() {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		client, err := mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27017").SetConnectTimeout(time.Second))
+		client, err := mongo.NewClient(options.Client().ApplyURI(defaultMongoDBURI).SetConnectTimeout(time.Second))
 		if err != nil {
 			return err
 		}
@@ -54,7 +53,9 @@ func (s *SimpleRemoteOrderedSuite) SetupSuite() {
 		if err := client.Connect(ctx); err != nil {
 			return err
 		}
-		defer client.Disconnect(ctx)
+		defer func() {
+			s.NoError(client.Disconnect(ctx))
+		}()
 
 		return client.Database("amboy_test").Collection(addJobsSuffix(name)).Drop(ctx)
 	}
@@ -62,11 +63,14 @@ func (s *SimpleRemoteOrderedSuite) SetupSuite() {
 
 func (s *SimpleRemoteOrderedSuite) SetupTest() {
 	ctx, canceler := context.WithCancel(context.Background())
-	s.driver = s.driverConstructor()
+	var err error
+	s.driver, err = s.driverConstructor()
+	s.Require().NoError(err)
 	s.canceler = canceler
 	s.NoError(s.driver.Open(ctx))
-	queue := newSimpleRemoteOrdered(2)
-	s.NoError(queue.SetDriver(s.driver))
+	queue, err := newRemoteSimpleOrdered(2)
+	s.Require().NoError(err)
+	s.Require().NoError(queue.SetDriver(s.driver))
 	s.queue = queue
 }
 
@@ -81,7 +85,7 @@ func (s *SimpleRemoteOrderedSuite) TearDownTest() {
 
 func (s *SimpleRemoteOrderedSuite) TestQueueSkipsCompletedJobs() {
 	j := job.NewShellJob("echo hello", "")
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	j.MarkComplete()
 	s.True(j.Status().Completed)
@@ -99,7 +103,7 @@ func (s *SimpleRemoteOrderedSuite) TestQueueSkipsCompletedJobs() {
 
 func (s *SimpleRemoteOrderedSuite) TestQueueSkipsUnresolvedJobs() {
 	j := job.NewShellJob("echo hello", "")
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	s.False(j.Status().Completed)
 	mockDep := dependency.NewMock()
@@ -120,7 +124,7 @@ func (s *SimpleRemoteOrderedSuite) TestQueueSkipsUnresolvedJobs() {
 
 func (s *SimpleRemoteOrderedSuite) TestQueueSkipsBlockedJobsWithNoEdges() {
 	j := job.NewShellJob("echo hello", "")
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	s.False(j.Status().Completed)
 	mockDep := dependency.NewMock()
@@ -132,7 +136,7 @@ func (s *SimpleRemoteOrderedSuite) TestQueueSkipsBlockedJobsWithNoEdges() {
 	s.NoError(s.queue.Start(ctx))
 	s.NoError(s.queue.Put(ctx, j))
 
-	amboy.Wait(ctx, s.queue)
+	s.Require().True(amboy.Wait(ctx, s.queue))
 
 	stat := s.queue.Stats(ctx)
 
@@ -142,7 +146,7 @@ func (s *SimpleRemoteOrderedSuite) TestQueueSkipsBlockedJobsWithNoEdges() {
 
 func (s *SimpleRemoteOrderedSuite) TestQueueSkipsBlockedJobsWithManyEdges() {
 	j := job.NewShellJob("echo hello", "")
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	s.False(j.Status().Completed)
 	mockDep := dependency.NewMock()
@@ -167,7 +171,7 @@ func (s *SimpleRemoteOrderedSuite) TestQueueSkipsBlockedJobsWithManyEdges() {
 
 func (s *SimpleRemoteOrderedSuite) TestQueueSkipsBlockedJobsWithOneEdge() {
 	j := job.NewShellJob("echo hello", "")
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	s.False(j.Status().Completed)
 	mockDep := dependency.NewMock()

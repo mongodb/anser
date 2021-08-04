@@ -19,6 +19,7 @@ import (
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 )
 
@@ -62,12 +63,12 @@ type simpleRateLimited struct {
 	queue    amboy.Queue
 	canceler context.CancelFunc
 	wg       sync.WaitGroup
-	mu       sync.Mutex
+	mu       sync.RWMutex
 }
 
 func (p *simpleRateLimited) Started() bool {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+	p.mu.RLock()
+	defer p.mu.RUnlock()
 
 	return p.canceler != nil
 }
@@ -112,7 +113,11 @@ func (p *simpleRateLimited) worker(bctx context.Context) {
 		if err != nil {
 			if job != nil {
 				job.AddError(err)
-				p.queue.Complete(bctx, job)
+				grip.Warning(message.WrapError(p.queue.Complete(bctx, job), message.Fields{
+					"message":  "could not mark job complete",
+					"job_id":   job.ID(),
+					"queue_id": p.queue.ID(),
+				}))
 			}
 			// start a replacement worker.
 			go p.worker(bctx)
@@ -169,7 +174,7 @@ func (p *simpleRateLimited) Close(ctx context.Context) {
 	// pools are restartable, end up calling wait more than once,
 	// which doesn't affect behavior but does cause this to panic in
 	// tests
-	defer func() { recover() }()
+	defer func() { _ = recover() }()
 
 	wait := make(chan struct{})
 	go func() {

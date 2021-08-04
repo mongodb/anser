@@ -59,7 +59,7 @@ func (s *SenderSuite) SetupTest() {
 
 	s.queue = queue.NewLocalLimitedSize(4, 128)
 	s.NoError(s.queue.Start(ctx))
-	s.Require().True(s.queue.Started())
+	s.Require().True(s.queue.Info().Started)
 
 	s.senders["single-shared"] = MakeQueueSender(ctx, s.queue, s.mock)
 	s.senders["multi-shared"] = MakeQueueMultiSender(ctx, s.queue, s.mock)
@@ -127,19 +127,33 @@ func (s *SenderSuite) TestLevelSetterRejectsInvalidSettings() {
 	for n, sender := range s.senders {
 		s.NoError(sender.SetLevel(send.LevelInfo{Default: level.Debug, Threshold: level.Alert}))
 		for _, l := range levels {
-			s.True(sender.Level().Valid(), string(n))
-			s.False(l.Valid(), string(n))
-			s.Error(sender.SetLevel(l), string(n))
-			s.True(sender.Level().Valid(), string(n))
-			s.NotEqual(sender.Level(), l, string(n))
+			s.True(sender.Level().Valid(), n)
+			s.False(l.Valid(), n)
+			s.Error(sender.SetLevel(l), n)
+			s.True(sender.Level().Valid(), n)
+			s.NotEqual(sender.Level(), l, n)
 		}
 
 	}
 }
 
+func (s *SenderSuite) TestFlush() {
+	for t, sender := range s.senders {
+		for i := 0; i < 10; i++ {
+			sender.Send(message.ConvertToComposer(level.Error, "message"))
+		}
+		s.Require().NoError(sender.Flush(context.Background()), t)
+		for i := 0; i < 10; i++ {
+			m, ok := s.mock.GetMessageSafe()
+			s.Require().True(ok, t)
+			s.Equal("message", m.Message.String(), t)
+		}
+	}
+}
+
 func (s *SenderSuite) TestCloserShouldUsusallyNoop() {
 	for t, sender := range s.senders {
-		s.NoError(sender.Close(), string(t))
+		s.NoError(sender.Close(), t)
 	}
 }
 

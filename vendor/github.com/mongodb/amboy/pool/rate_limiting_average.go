@@ -114,8 +114,17 @@ func (p *ewmaRateLimiting) getNextTime(dur time.Duration) time.Duration {
 	return (excessTime / time.Duration(p.target))
 }
 
-func (p *ewmaRateLimiting) Started() bool { return p.canceler != nil }
+func (p *ewmaRateLimiting) Started() bool {
+	p.mutex.RLock()
+	defer p.mutex.RUnlock()
+
+	return p.canceler != nil
+}
+
 func (p *ewmaRateLimiting) Start(ctx context.Context) error {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
 	if p.canceler != nil {
 		return nil
 	}
@@ -188,6 +197,9 @@ func (p *ewmaRateLimiting) addCanceler(id string, cancel context.CancelFunc) {
 }
 
 func (p *ewmaRateLimiting) runJob(ctx context.Context, j amboy.Job) time.Duration {
+	ti := j.TimeInfo()
+	ti.Start = time.Now()
+
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithCancel(ctx)
 	p.addCanceler(j.ID(), cancel)
@@ -200,8 +212,9 @@ func (p *ewmaRateLimiting) runJob(ctx context.Context, j amboy.Job) time.Duratio
 	}()
 
 	executeJob(ctx, "rate-limited-average", j, p.queue)
+	ti.End = time.Now()
 
-	return j.TimeInfo().Duration()
+	return ti.Duration()
 }
 
 func (p *ewmaRateLimiting) SetQueue(q amboy.Queue) error {
@@ -238,7 +251,7 @@ func (p *ewmaRateLimiting) Close(ctx context.Context) {
 	// pools are restartable, end up calling wait more than once,
 	// which doesn't affect behavior but does cause this to panic in
 	// tests
-	defer func() { recover() }()
+	defer func() { _ = recover() }()
 	wait := make(chan struct{})
 	go func() {
 		defer recovery.LogStackTraceAndContinue("waiting for close")
@@ -290,17 +303,17 @@ func (p *ewmaRateLimiting) Abort(ctx context.Context, id string) error {
 		return errors.Errorf("could not find '%s' in the queue", id)
 	}
 
-	p.queue.Complete(ctx, job)
-
-	return nil
+	return errors.Wrap(p.queue.Complete(ctx, job), "marking job complete")
 }
 
-func (p *ewmaRateLimiting) AbortAll(ctx context.Context) {
+func (p *ewmaRateLimiting) AbortAll(ctx context.Context) error {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
+	catcher := grip.NewBasicCatcher()
 	for id, cancel := range p.jobs {
 		if ctx.Err() != nil {
+			catcher.Add(ctx.Err())
 			break
 		}
 		cancel()
@@ -309,6 +322,7 @@ func (p *ewmaRateLimiting) AbortAll(ctx context.Context) {
 		if !ok {
 			continue
 		}
-		p.queue.Complete(ctx, job)
+		catcher.Wrapf(p.queue.Complete(ctx, job), "marking job '%s' complete", job.ID())
 	}
+	return catcher.Resolve()
 }

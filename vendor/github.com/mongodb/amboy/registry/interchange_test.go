@@ -40,12 +40,6 @@ func TestJobInterchangeSuiteBSON(t *testing.T) {
 	suite.Run(t, s)
 }
 
-func TestJobInterchangeSuiteYAML(t *testing.T) {
-	s := new(JobInterchangeSuite)
-	s.format = amboy.YAML
-	suite.Run(t, s)
-}
-
 func (s *JobInterchangeSuite) SetupTest() {
 	s.job = NewTestJob("interchange-test")
 }
@@ -57,6 +51,7 @@ func (s *JobInterchangeSuite) TestRoundTripHighLevel() {
 	outJob, err := i.Resolve(s.format)
 	s.NoError(err)
 
+	outJob.SetScopes(nil)
 	if s.format == amboy.BSON || s.format == amboy.BSON2 {
 		// mgo/bson seems to unset/nil the private map in the
 		// implementation of the dependency. It's not material
@@ -71,12 +66,9 @@ func (s *JobInterchangeSuite) TestRoundTripLowLevel() {
 	i, err := MakeJobInterchange(s.job, s.format)
 	s.NoError(err)
 
-	i.Job.job = nil
-	i.Dependency.Dependency.dep = nil
-
 	j2, err := i.Resolve(s.format)
-
 	if s.NoError(err) {
+		j2.SetScopes(nil)
 		j2.SetDependency(dependency.NewAlways())
 		s.Equal(s.job, j2)
 	}
@@ -175,7 +167,30 @@ func (s *JobInterchangeSuite) TestTimeInfoPersists() {
 			s.Equal(ti, j.TimeInfo())
 		}
 	}
+}
 
+func (s *JobInterchangeSuite) TestApplyScopesOnEnqueuePersists() {
+	s.job.SetShouldApplyScopesOnEnqueue(true)
+
+	i, err := MakeJobInterchange(s.job, s.format)
+	s.Require().NoError(err)
+
+	j, err := i.Resolve(s.format)
+	s.Require().NoError(err)
+	s.True(j.ShouldApplyScopesOnEnqueue())
+}
+
+func (s *JobInterchangeSuite) TestRetryInfoPersists() {
+	info := amboy.JobRetryInfo{
+		Retryable:      true,
+		CurrentAttempt: 5,
+	}
+	s.job.UpdateRetryInfo(info.Options())
+	s.Equal(info, s.job.RetryInfo())
+
+	ji, err := MakeJobInterchange(s.job, s.format)
+	s.Require().NoError(err)
+	s.Equal(info, ji.RetryInfo)
 }
 
 // DependencyInterchangeSuite tests the DependencyInterchange format

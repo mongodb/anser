@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+//go:build openbsd
 // +build openbsd
 
 // This, on the face of it, bizarre testing mechanism is necessary because
@@ -87,7 +88,7 @@ func TestMain(m *testing.M) {
 func init() {
 	testProcs["pledge"] = testProc{
 		func() {
-			fmt.Println(unix.Pledge("", nil))
+			fmt.Println(unix.Pledge("", ""))
 			os.Exit(0)
 		},
 		func() error {

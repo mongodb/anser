@@ -68,7 +68,7 @@ func (r *localWorkers) Started() bool {
 }
 
 // Start initializes all worker process, and returns an error if the
-// Runner has already started.
+// Runner does not have a queue.
 func (r *localWorkers) Start(ctx context.Context) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -85,7 +85,7 @@ func (r *localWorkers) Start(ctx context.Context) error {
 	r.canceler = cancel
 
 	for w := 1; w <= r.size; w++ {
-		go worker(workerCtx, "local", r.queue, &r.wg)
+		go worker(workerCtx, "local", r.queue, &r.wg, &r.mu)
 		grip.Debugf("started worker %d of %d waiting for jobs", w, r.size)
 	}
 

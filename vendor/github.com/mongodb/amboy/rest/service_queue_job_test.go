@@ -18,6 +18,7 @@ import (
 type JobStatusSuite struct {
 	service *QueueService
 	require *require.Assertions
+	j       amboy.Job
 	jobName string
 	closer  context.CancelFunc
 	suite.Suite

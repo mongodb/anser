@@ -47,6 +47,7 @@ const (
 	FUSE_SUPER_MAGIC      = 0x65735546
 	FUTEXFS_SUPER_MAGIC   = 0xBAD1DEA
 	HFS_SUPER_MAGIC       = 0x4244
+	HFSPLUS_SUPER_MAGIC   = 0x482b
 	HOSTFS_SUPER_MAGIC    = 0x00c0ffee
 	HPFS_SUPER_MAGIC      = 0xF995E849
 	HUGETLBFS_MAGIC       = 0x958458f6
@@ -156,6 +157,7 @@ var fsTypeMap = map[int64]string{
 	GFS_SUPER_MAGIC:             "gfs/gfs2",            /* 0x1161970 remote */
 	GPFS_SUPER_MAGIC:            "gpfs",                /* 0x47504653 remote */
 	HFS_SUPER_MAGIC:             "hfs",                 /* 0x4244 local */
+	HFSPLUS_SUPER_MAGIC:         "hfsplus",             /* 0x482b local */
 	HPFS_SUPER_MAGIC:            "hpfs",                /* 0xF995E849 local */
 	HUGETLBFS_MAGIC:             "hugetlbfs",           /* 0x958458F6 local */
 	MTD_INODE_FS_SUPER_MAGIC:    "inodefs",             /* 0x11307854 local */
@@ -216,13 +218,6 @@ var fsTypeMap = map[int64]string{
 	ZFS_SUPER_MAGIC:             "zfs",                 /* 0x2FC12FC1 local */
 }
 
-// Partitions returns disk partitions. If all is false, returns
-// physical devices only (e.g. hard disks, cd-rom drives, USB keys)
-// and ignore all others (e.g. memory partitions such as /dev/shm)
-func Partitions(all bool) ([]PartitionStat, error) {
-	return PartitionsWithContext(context.Background(), all)
-}
-
 func PartitionsWithContext(ctx context.Context, all bool) ([]PartitionStat, error) {
 	useMounts := false
 
@@ -242,7 +237,7 @@ func PartitionsWithContext(ctx context.Context, all bool) ([]PartitionStat, erro
 	}
 
 	fs, err := getFileSystems()
-	if err != nil {
+	if err != nil && !all {
 		return nil, err
 	}
 
@@ -281,13 +276,21 @@ func PartitionsWithContext(ctx context.Context, all bool) ([]PartitionStat, erro
 			mountPoint := fields[4]
 			mountOpts := fields[5]
 
+			if rootDir := fields[3]; rootDir != "" && rootDir != "/" {
+				if len(mountOpts) == 0 {
+					mountOpts = "bind"
+				} else {
+					mountOpts = "bind," + mountOpts
+				}
+			}
+
 			fields = strings.Fields(parts[1])
 			fstype := fields[0]
 			device := fields[1]
 
 			d = PartitionStat{
 				Device:     device,
-				Mountpoint: mountPoint,
+				Mountpoint: unescapeFstab(mountPoint),
 				Fstype:     fstype,
 				Opts:       mountOpts,
 			}
@@ -295,6 +298,13 @@ func PartitionsWithContext(ctx context.Context, all bool) ([]PartitionStat, erro
 			if !all {
 				if d.Device == "none" || !common.StringsHas(fs, d.Fstype) {
 					continue
+				}
+			}
+
+			if strings.HasPrefix(d.Device, "/dev/mapper/") {
+				devpath, err := filepath.EvalSymlinks(common.HostDev(strings.Replace(d.Device, "/dev", "", -1)))
+				if err == nil {
+					d.Device = devpath
 				}
 			}
 
@@ -335,10 +345,6 @@ func getFileSystems() ([]string, error) {
 	}
 
 	return ret, nil
-}
-
-func IOCounters(names ...string) (map[string]IOCountersStat, error) {
-	return IOCountersWithContext(context.Background(), names...)
 }
 
 func IOCountersWithContext(ctx context.Context, names ...string) (map[string]IOCountersStat, error) {

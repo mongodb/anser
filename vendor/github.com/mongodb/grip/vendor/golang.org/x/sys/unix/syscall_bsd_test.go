@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+//go:build darwin || dragonfly || freebsd || openbsd
 // +build darwin dragonfly freebsd openbsd
 
 package unix_test
@@ -10,22 +11,19 @@ import (
 	"os/exec"
 	"runtime"
 	"testing"
+	"time"
 
 	"golang.org/x/sys/unix"
 )
 
-const MNT_WAIT = 1
-const MNT_NOWAIT = 2
-
 func TestGetfsstat(t *testing.T) {
-	const flags = MNT_NOWAIT // see golang.org/issue/16937
-	n, err := unix.Getfsstat(nil, flags)
+	n, err := unix.Getfsstat(nil, unix.MNT_NOWAIT)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	data := make([]unix.Statfs_t, n)
-	n2, err := unix.Getfsstat(data, flags)
+	n2, err := unix.Getfsstat(data, unix.MNT_NOWAIT)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,4 +57,29 @@ func TestSysctlRaw(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestSysctlUint32(t *testing.T) {
+	maxproc, err := unix.SysctlUint32("kern.maxproc")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("kern.maxproc: %v", maxproc)
+}
+
+func TestSysctlClockinfo(t *testing.T) {
+	ci, err := unix.SysctlClockinfo("kern.clockrate")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("tick = %v, hz = %v, profhz = %v, stathz = %v",
+		ci.Tick, ci.Hz, ci.Profhz, ci.Stathz)
+}
+
+func TestSysctlTimeval(t *testing.T) {
+	tv, err := unix.SysctlTimeval("kern.boottime")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("boottime = %v", time.Unix(tv.Unix()))
 }

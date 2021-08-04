@@ -5,19 +5,20 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/google/uuid"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/pkg/errors"
-	uuid "github.com/satori/go.uuid"
 )
 
 type QueueTester struct {
-	started     bool
-	pool        amboy.Runner
-	id          string
-	numComplete int
-	toProcess   chan amboy.Job
-	storage     map[string]amboy.Job
+	started      bool
+	pool         amboy.Runner
+	retryHandler amboy.RetryHandler
+	id           string
+	numComplete  int
+	toProcess    chan amboy.Job
+	storage      map[string]amboy.Job
 
 	mutex sync.RWMutex
 }
@@ -37,7 +38,7 @@ func NewQueueTesterInstance() *QueueTester {
 	return &QueueTester{
 		toProcess: make(chan amboy.Job, 101),
 		storage:   make(map[string]amboy.Job),
-		id:        uuid.NewV4().String(),
+		id:        uuid.New().String(),
 	}
 }
 
@@ -76,18 +77,27 @@ func (q *QueueTester) Get(ctx context.Context, name string) (amboy.Job, bool) {
 	return job, ok
 }
 
-func (q *QueueTester) Started() bool {
+func (q *QueueTester) Info() amboy.QueueInfo {
 	q.mutex.RLock()
 	defer q.mutex.RUnlock()
 
-	return q.started
+	return q.info()
 }
 
-func (q *QueueTester) Complete(ctx context.Context, j amboy.Job) {
+func (q *QueueTester) info() amboy.QueueInfo {
+	return amboy.QueueInfo{
+		Started:     q.started,
+		LockTimeout: amboy.LockTimeout,
+	}
+}
+
+func (q *QueueTester) Complete(ctx context.Context, j amboy.Job) error {
 	q.mutex.Lock()
 	defer q.mutex.Unlock()
 
 	q.numComplete++
+
+	return nil
 }
 
 func (q *QueueTester) Stats(ctx context.Context) amboy.QueueStats {
@@ -107,7 +117,7 @@ func (q *QueueTester) Runner() amboy.Runner {
 }
 
 func (q *QueueTester) SetRunner(r amboy.Runner) error {
-	if q.Started() {
+	if q.Info().Started {
 		return errors.New("cannot set runner in a started pool")
 	}
 	q.pool = r
@@ -124,7 +134,7 @@ func (q *QueueTester) Next(ctx context.Context) amboy.Job {
 }
 
 func (q *QueueTester) Start(ctx context.Context) error {
-	if q.Started() {
+	if q.Info().Started {
 		return nil
 	}
 
@@ -159,23 +169,28 @@ func (q *QueueTester) Results(ctx context.Context) <-chan amboy.Job {
 	return output
 }
 
-func (q *QueueTester) JobStats(ctx context.Context) <-chan amboy.JobStatusInfo {
-	output := make(chan amboy.JobStatusInfo)
+func (q *QueueTester) JobInfo(ctx context.Context) <-chan amboy.JobInfo {
+	infos := make(chan amboy.JobInfo)
+
 	go func() {
-		defer close(output)
-		for _, job := range q.storage {
+		defer close(infos)
+		for _, j := range q.storage {
 			if ctx.Err() != nil {
 				return
 
 			}
-			status := job.Status()
-			status.ID = job.ID()
-			output <- status
+			select {
+			case <-ctx.Done():
+				return
+			case infos <- amboy.NewJobInfo(j):
+			}
 		}
 	}()
 
-	return output
+	return infos
 }
+
+func (q *QueueTester) Close(context.Context) {}
 
 type jobThatPanics struct {
 	job.Base

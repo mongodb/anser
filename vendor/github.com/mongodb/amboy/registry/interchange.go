@@ -11,15 +11,18 @@ import (
 // instances. Interchange is also used internally as part of JobGroup
 // Job type.
 type JobInterchange struct {
-	Name       string                 `json:"name" bson:"_id" yaml:"name"`
-	Type       string                 `json:"type" bson:"type" yaml:"type"`
-	Group      string                 `bson:"group,omitempty" json:"group,omitempty" yaml:"group,omitempty"`
-	Version    int                    `json:"version" bson:"version" yaml:"version"`
-	Priority   int                    `json:"priority" bson:"priority" yaml:"priority"`
-	Status     amboy.JobStatusInfo    `bson:"status" json:"status" yaml:"status"`
-	TimeInfo   amboy.JobTimeInfo      `bson:"time_info" json:"time_info,omitempty" yaml:"time_info,omitempty"`
-	Job        *rawJob                `json:"job,omitempty" bson:"job,omitempty" yaml:"job,omitempty"`
-	Dependency *DependencyInterchange `json:"dependency,omitempty" bson:"dependency,omitempty" yaml:"dependency,omitempty"`
+	Name                 string                 `bson:"_id" json:"name" yaml:"name"`
+	Type                 string                 `json:"type" bson:"type" yaml:"type"`
+	Group                string                 `bson:"group,omitempty" json:"group,omitempty" yaml:"group,omitempty"`
+	Version              int                    `json:"version" bson:"version" yaml:"version"`
+	Priority             int                    `json:"priority" bson:"priority" yaml:"priority"`
+	Status               amboy.JobStatusInfo    `bson:"status" json:"status" yaml:"status"`
+	Scopes               []string               `bson:"scopes,omitempty" json:"scopes,omitempty" yaml:"scopes,omitempty"`
+	ApplyScopesOnEnqueue bool                   `bson:"apply_scopes_on_enqueue" json:"apply_scopes_on_enqueue,omitempty" yaml:"apply_scopes_on_enqueue,omitempty"`
+	RetryInfo            amboy.JobRetryInfo     `bson:"retry_info" json:"retry_info,omitempty" yaml:"retry_info,omitempty"`
+	TimeInfo             amboy.JobTimeInfo      `bson:"time_info" json:"time_info,omitempty" yaml:"time_info,omitempty"`
+	Job                  rawJob                 `json:"job" bson:"job" yaml:"job"`
+	Dependency           *DependencyInterchange `json:"dependency,omitempty" bson:"dependency,omitempty" yaml:"dependency,omitempty"`
 }
 
 // MakeJobInterchange changes a Job interface into a JobInterchange
@@ -42,18 +45,16 @@ func MakeJobInterchange(j amboy.Job, f amboy.Format) (*JobInterchange, error) {
 	}
 
 	output := &JobInterchange{
-		Name:     j.ID(),
-		Type:     typeInfo.Name,
-		Version:  typeInfo.Version,
-		Priority: j.Priority(),
-		Status:   j.Status(),
-		TimeInfo: j.TimeInfo(),
-		Job: &rawJob{
-			Body: data,
-			Type: typeInfo.Name,
-			job:  j,
-		},
-		Dependency: dep,
+		Name:                 j.ID(),
+		Type:                 typeInfo.Name,
+		Version:              typeInfo.Version,
+		Priority:             j.Priority(),
+		Status:               j.Status(),
+		TimeInfo:             j.TimeInfo(),
+		ApplyScopesOnEnqueue: j.ShouldApplyScopesOnEnqueue(),
+		RetryInfo:            j.RetryInfo(),
+		Job:                  data,
+		Dependency:           dep,
 	}
 
 	return output, nil
@@ -83,7 +84,7 @@ func (j *JobInterchange) Resolve(f amboy.Format) (amboy.Job, error) {
 		return nil, errors.WithStack(err)
 	}
 
-	err = convertFrom(f, j.Job.Body, job)
+	err = convertFrom(f, j.Job, job)
 	if err != nil {
 		return nil, errors.Wrap(err, "converting job body")
 	}
@@ -91,13 +92,15 @@ func (j *JobInterchange) Resolve(f amboy.Format) (amboy.Job, error) {
 	job.SetDependency(dep)
 	job.SetPriority(j.Priority)
 	job.SetStatus(j.Status)
+	job.SetShouldApplyScopesOnEnqueue(j.ApplyScopesOnEnqueue)
 	job.UpdateTimeInfo(j.TimeInfo)
+	job.UpdateRetryInfo(j.RetryInfo.Options())
 
 	return job, nil
 }
 
 // Raw returns the serialized version of the job.
-func (j *JobInterchange) Raw() []byte { return j.Job.Body }
+func (j *JobInterchange) Raw() []byte { return j.Job }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -106,10 +109,10 @@ func (j *JobInterchange) Raw() []byte { return j.Job.Body }
 // DependencyInterchange objects between processes, which have the
 // type information in easy to access and index-able locations.
 type DependencyInterchange struct {
-	Type       string         `json:"type" bson:"type" yaml:"type"`
-	Version    int            `json:"version" bson:"version" yaml:"version"`
-	Edges      []string       `bson:"edges" json:"edges" yaml:"edges"`
-	Dependency *rawDependency `json:"dependency" bson:"dependency" yaml:"dependency"`
+	Type       string        `json:"type" bson:"type" yaml:"type"`
+	Version    int           `json:"version" bson:"version" yaml:"version"`
+	Edges      []string      `bson:"edges" json:"edges" yaml:"edges"`
+	Dependency rawDependency `json:"dependency" bson:"dependency" yaml:"dependency"`
 }
 
 // MakeDependencyInterchange converts a dependency.Manager document to
@@ -123,14 +126,10 @@ func makeDependencyInterchange(f amboy.Format, d dependency.Manager) (*Dependenc
 	}
 
 	output := &DependencyInterchange{
-		Type:    typeInfo.Name,
-		Version: typeInfo.Version,
-		Edges:   d.Edges(),
-		Dependency: &rawDependency{
-			Body: data,
-			Type: typeInfo.Name,
-			dep:  d,
-		},
+		Type:       typeInfo.Name,
+		Version:    typeInfo.Version,
+		Edges:      d.Edges(),
+		Dependency: data,
 	}
 
 	return output, nil
@@ -156,7 +155,7 @@ func convertToDependency(f amboy.Format, d *DependencyInterchange) (dependency.M
 	// interchange object, but want to use the type information
 	// associated with the object that we produced with the
 	// factory.
-	err = convertFrom(f, d.Dependency.Body, dep)
+	err = convertFrom(f, d.Dependency, dep)
 	if err != nil {
 		return nil, errors.Wrap(err, "converting dependency")
 	}

@@ -1,14 +1,16 @@
 package message
 
 import (
-	"errors"
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/mongodb/grip/level"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPopulatedMessageComposerConstructors(t *testing.T) {
@@ -100,7 +102,7 @@ func TestPopulatedMessageComposerConstructors(t *testing.T) {
 }
 
 func TestUnpopulatedMessageComposers(t *testing.T) {
-	assert := assert.New(t) // nolint
+	assert := assert.New(t)
 	// map objects to output
 	cases := []Composer{
 		&stringMessage{},
@@ -140,57 +142,145 @@ func TestUnpopulatedMessageComposers(t *testing.T) {
 
 func TestDataCollecterComposerConstructors(t *testing.T) {
 	const testMsg = "hello"
-	assert := assert.New(t) // nolint
 	// map objects to output (prefix)
-	cases := map[Composer]string{
-		NewProcessInfo(level.Error, int32(os.Getpid()), testMsg): "",
-		NewSystemInfo(level.Error, testMsg):                      testMsg,
-		MakeSystemInfo(testMsg):                                  testMsg,
-		CollectProcessInfo(int32(1)):                             "",
-		CollectProcessInfoSelf():                                 "",
-		CollectSystemInfo():                                      "",
-		CollectBasicGoStats():                                    "",
-		CollectGoStatsDeltas():                                   "",
-		CollectGoStatsRates():                                    "",
-		CollectGoStatsTotals():                                   "",
-		MakeGoStatsDeltas(testMsg):                               testMsg,
-		MakeGoStatsRates(testMsg):                                testMsg,
-		MakeGoStatsTotals(testMsg):                               testMsg,
-		NewGoStatsDeltas(level.Error, testMsg):                   testMsg,
-		NewGoStatsRates(level.Error, testMsg):                    testMsg,
-		NewGoStatsTotals(level.Error, testMsg):                   testMsg,
-	}
 
-	for msg, prefix := range cases {
-		assert.NotNil(msg)
-		assert.NotNil(msg.Raw())
-		assert.Implements((*Composer)(nil), msg)
-		assert.True(msg.Loggable())
-		assert.True(strings.HasPrefix(msg.String(), prefix), "%T: %s", msg, msg)
-	}
+	t.Run("Single", func(t *testing.T) {
+		for _, test := range []struct {
+			Name       string
+			Msg        Composer
+			Expected   string
+			ShouldSkip bool
+		}{
+			{
+				Name: "ProcessInfoCurrentProc",
+				Msg:  NewProcessInfo(level.Error, int32(os.Getpid()), testMsg),
+			},
+			{
+				Name:     "NewSystemInfo",
+				Msg:      NewSystemInfo(level.Error, testMsg),
+				Expected: testMsg,
+			},
 
-	multiCases := [][]Composer{
-		CollectProcessInfoSelfWithChildren(),
-		CollectProcessInfoWithChildren(int32(1)),
-		CollectAllProcesses(),
-	}
-
-	for _, group := range multiCases {
-		assert.True(len(group) >= 1)
-		for _, msg := range group {
-			assert.NotNil(msg)
-			assert.Implements((*Composer)(nil), msg)
-			assert.NotEqual("", msg.String())
-			assert.True(msg.Loggable())
+			{
+				Name:     "MakeSystemInfo",
+				Msg:      MakeSystemInfo(testMsg),
+				Expected: testMsg,
+			},
+			{
+				Name:       "CollectProcInfoPidOne",
+				Msg:        CollectProcessInfo(int32(1)),
+				ShouldSkip: runtime.GOOS == "windows",
+			},
+			{
+				Name: "CollectProcInfoSelf",
+				Msg:  CollectProcessInfoSelf(),
+			},
+			{
+				Name: "CollectSystemInfo",
+				Msg:  CollectSystemInfo(),
+			},
+			{
+				Name: "CollectBasicGoStats",
+				Msg:  CollectBasicGoStats(),
+			},
+			{
+				Name: "CollectGoStatsDeltas",
+				Msg:  CollectGoStatsDeltas(),
+			},
+			{
+				Name: "CollectGoStatsRates",
+				Msg:  CollectGoStatsRates(),
+			},
+			{
+				Name: "CollectGoStatsTotals",
+				Msg:  CollectGoStatsTotals(),
+			},
+			{
+				Name:     "MakeGoStatsDelta",
+				Msg:      MakeGoStatsDeltas(testMsg),
+				Expected: testMsg,
+			},
+			{
+				Name:     "MakeGoStatsRates",
+				Msg:      MakeGoStatsRates(testMsg),
+				Expected: testMsg,
+			},
+			{
+				Name:     "MakeGoStatsTotals",
+				Msg:      MakeGoStatsTotals(testMsg),
+				Expected: testMsg,
+			},
+			{
+				Name:     "NewGoStatsDeltas",
+				Msg:      NewGoStatsDeltas(level.Error, testMsg),
+				Expected: testMsg,
+			},
+			{
+				Name:     "NewGoStatsRates",
+				Msg:      NewGoStatsRates(level.Error, testMsg),
+				Expected: testMsg,
+			},
+			{
+				Name:     "NewGoStatsTotals",
+				Msg:      NewGoStatsTotals(level.Error, testMsg),
+				Expected: testMsg,
+			},
+		} {
+			if test.ShouldSkip {
+				continue
+			}
+			t.Run(test.Name, func(t *testing.T) {
+				assert.NotNil(t, test.Msg)
+				assert.NotNil(t, test.Msg.Raw())
+				assert.Implements(t, (*Composer)(nil), test.Msg)
+				assert.True(t, test.Msg.Loggable())
+				assert.True(t, strings.HasPrefix(test.Msg.String(), test.Expected), "%T: %s", test.Msg, test.Msg)
+			})
 		}
-	}
+	})
+
+	t.Run("Multi", func(t *testing.T) {
+		for _, test := range []struct {
+			Name       string
+			Group      []Composer
+			ShouldSkip bool
+		}{
+			{
+				Name:  "SelfWithChildren",
+				Group: CollectProcessInfoSelfWithChildren(),
+			},
+			{
+				Name:       "PidOneWithChildren",
+				Group:      CollectProcessInfoWithChildren(int32(1)),
+				ShouldSkip: runtime.GOOS == "windows",
+			},
+			{
+				Name:  "AllProcesses",
+				Group: CollectAllProcesses(),
+			},
+		} {
+			if test.ShouldSkip {
+				continue
+			}
+			t.Run(test.Name, func(t *testing.T) {
+				require.True(t, len(test.Group) >= 1)
+				for _, msg := range test.Group {
+					assert.NotNil(t, msg)
+					assert.Implements(t, (*Composer)(nil), msg)
+					assert.NotEqual(t, "", msg.String())
+					assert.True(t, msg.Loggable())
+				}
+			})
+
+		}
+	})
 }
 
 func TestStackMessages(t *testing.T) {
 	const testMsg = "hello"
 	var stackMsg = "message/composer_test"
 
-	assert := assert.New(t) // nolint
+	assert := assert.New(t)
 	// map objects to output (prefix)
 	cases := map[Composer]string{
 		NewStack(1, testMsg):                testMsg,
@@ -223,7 +313,7 @@ func TestStackMessages(t *testing.T) {
 
 func TestComposerConverter(t *testing.T) {
 	const testMsg = "hello world"
-	assert := assert.New(t) // nolint
+	assert := assert.New(t)
 
 	cases := []interface{}{
 		NewLine(testMsg),
@@ -269,12 +359,11 @@ func TestComposerConverter(t *testing.T) {
 		assert.True(comp.Loggable())
 		assert.True(strings.HasPrefix(comp.String(), out))
 	}
-
 }
 
 func TestJiraMessageComposerConstructor(t *testing.T) {
 	const testMsg = "hello"
-	assert := assert.New(t) // nolint
+	assert := assert.New(t)
 	reporterField := JiraField{Key: "Reporter", Value: "Annie"}
 	assigneeField := JiraField{Key: "Assignee", Value: "Sejin"}
 	typeField := JiraField{Key: "Type", Value: "Bug"}
@@ -293,7 +382,7 @@ func TestJiraMessageComposerConstructor(t *testing.T) {
 }
 
 func TestProcessTreeDoesNotHaveDuplicates(t *testing.T) {
-	assert := assert.New(t) // nolint
+	assert := assert.New(t)
 
 	procs := CollectProcessInfoWithChildren(1)
 	seen := make(map[int32]struct{})
@@ -308,7 +397,7 @@ func TestProcessTreeDoesNotHaveDuplicates(t *testing.T) {
 }
 
 func TestJiraIssueAnnotationOnlySupportsStrings(t *testing.T) {
-	assert := assert.New(t) // nolint
+	assert := assert.New(t)
 
 	m := &jiraMessage{
 		issue: &JiraIssue{},
@@ -317,4 +406,32 @@ func TestJiraIssueAnnotationOnlySupportsStrings(t *testing.T) {
 	assert.Error(m.Annotate("k", 1))
 	assert.Error(m.Annotate("k", true))
 	assert.Error(m.Annotate("k", nil))
+}
+
+type causer interface {
+	Cause() error
+}
+
+func TestErrorComposers(t *testing.T) {
+	for name, cmp := range map[string]ErrorComposer{
+		"Wrapped": WrapError(errors.New("err"), "msg"),
+		"Plain":   NewError(errors.New("err")),
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Run("Interfaces", func(t *testing.T) {
+				assert.Implements(t, (*error)(nil), cmp)
+				assert.Implements(t, (*causer)(nil), cmp)
+			})
+			t.Run("Value", func(t *testing.T) {
+				assert.Equal(t, cmp.Error(), cmp.String())
+			})
+			t.Run("Causer", func(t *testing.T) {
+				cause := errors.Cause(cmp)
+				assert.NotEqual(t, cause, cmp)
+			})
+			t.Run("ExtendedFormat", func(t *testing.T) {
+				assert.NotEqual(t, fmt.Sprintf("%+v", cmp), fmt.Sprintf("%v", cmp))
+			})
+		})
+	}
 }

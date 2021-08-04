@@ -29,8 +29,7 @@ func TestQueueGroup(t *testing.T) {
 	bctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	const mdburl = "mongodb://localhost:27017"
-	client, cerr := mongo.NewClient(options.Client().ApplyURI(mdburl).SetConnectTimeout(2 * time.Second))
+	client, cerr := mongo.NewClient(options.Client().ApplyURI(defaultMongoDBURI).SetConnectTimeout(2 * time.Second))
 	require.NoError(t, cerr)
 	require.NoError(t, client.Connect(bctx))
 	defer func() { require.NoError(t, client.Disconnect(bctx)) }()
@@ -218,7 +217,7 @@ func TestQueueGroup(t *testing.T) {
 								PruneFrequency: test.ttl,
 							}
 
-							g, err := NewMongoDBSingleQueueGroup(ctx, remoteOpts, client, mopts) // nolint
+							g, err := NewMongoDBSingleQueueGroup(ctx, remoteOpts, client, mopts)
 							if test.valid && remoteTest.valid {
 								require.NoError(t, err)
 								require.NotNil(t, g)
@@ -251,7 +250,7 @@ func TestQueueGroup(t *testing.T) {
 					mopts := MongoDBOptions{
 						WaitInterval: time.Millisecond,
 						DB:           "amboy_group_test",
-						URI:          "mongodb://localhost:27017",
+						URI:          defaultMongoDBURI,
 					}
 
 					closer := func(cctx context.Context) error {
@@ -284,7 +283,7 @@ func TestQueueGroup(t *testing.T) {
 				Constructor: func(ctx context.Context, ttl time.Duration) (amboy.QueueGroup, queueGroupCloser, error) {
 					mopts := MongoDBOptions{
 						DB:           "amboy_group_test",
-						URI:          "mongodb://localhost:27017",
+						URI:          defaultMongoDBURI,
 						WaitInterval: time.Millisecond,
 					}
 
@@ -331,12 +330,12 @@ func TestQueueGroup(t *testing.T) {
 					q1, err := g.Get(ctx, "one")
 					require.NoError(t, err)
 					require.NotNil(t, q1)
-					require.True(t, q1.Started())
+					require.True(t, q1.Info().Started)
 
 					q2, err := g.Get(ctx, "two")
 					require.NoError(t, err)
 					require.NotNil(t, q2)
-					require.True(t, q2.Started())
+					require.True(t, q2.Info().Started)
 
 					j1 := job.NewShellJob("true", "")
 					j2 := job.NewShellJob("true", "")
@@ -397,28 +396,28 @@ func TestQueueGroup(t *testing.T) {
 					q1, err := g.Get(ctx, "one")
 					require.NoError(t, err)
 					require.NotNil(t, q1)
-					if !q1.Started() {
+					if !q1.Info().Started {
 						require.NoError(t, q1.Start(ctx))
 					}
 
 					q2, err := localConstructor(ctx)
 					require.NoError(t, err)
 					require.Error(t, g.Put(ctx, "one", q2), "cannot add queue to existing index")
-					if !q2.Started() {
+					if !q2.Info().Started {
 						require.NoError(t, q2.Start(ctx))
 					}
 
 					q3, err := localConstructor(ctx)
 					require.NoError(t, err)
 					require.NoError(t, g.Put(ctx, "three", q3))
-					if !q3.Started() {
+					if !q3.Info().Started {
 						require.NoError(t, q3.Start(ctx))
 					}
 
 					q4, err := localConstructor(ctx)
 					require.NoError(t, err)
 					require.NoError(t, g.Put(ctx, "four", q4))
-					if !q4.Started() {
+					if !q4.Info().Started {
 						require.NoError(t, q4.Start(ctx))
 					}
 
@@ -556,10 +555,7 @@ func TestQueueGroup(t *testing.T) {
 					for i := 0; i < 30; i++ {
 						time.Sleep(time.Second)
 
-						if ctx.Err() != nil {
-							grip.Info(ctx.Err())
-							break
-						}
+						require.NoError(t, ctx.Err())
 						if g.Len() == 0 {
 							break
 						}
@@ -606,7 +602,7 @@ func TestQueueGroup(t *testing.T) {
 			mopts := MongoDBOptions{
 				DB:           "amboy_group_test",
 				WaitInterval: time.Millisecond,
-				URI:          "mongodb://localhost:27017",
+				URI:          defaultMongoDBURI,
 			}
 
 			for i := 0; i < 10; i++ {

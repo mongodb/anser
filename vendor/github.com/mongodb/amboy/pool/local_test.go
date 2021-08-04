@@ -52,7 +52,7 @@ func (s *LocalWorkersSuite) TestPanicJobsDoNotPanicHarness() {
 	wg := &sync.WaitGroup{}
 
 	s.queue.toProcess = jobsChanWithPanicingJobs(ctx, s.size)
-	s.NotPanics(func() { worker(ctx, "test-local", s.queue, wg) })
+	s.NotPanics(func() { worker(ctx, "test-local", s.queue, wg, &sync.Mutex{}) })
 }
 
 func (s *LocalWorkersSuite) TestConstructedInstanceImplementsInterface() {
@@ -84,7 +84,7 @@ func (s *LocalWorkersSuite) TestPoolStartsAndProcessesJobs() {
 	}
 
 	s.False(s.pool.Started())
-	s.False(s.queue.Started())
+	s.False(s.queue.Info().Started)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -96,7 +96,7 @@ func (s *LocalWorkersSuite) TestPoolStartsAndProcessesJobs() {
 	}
 
 	s.True(s.pool.Started())
-	s.True(s.queue.Started())
+	s.True(s.queue.Info().Started)
 
 	amboy.WaitInterval(ctx, s.queue, 100*time.Millisecond)
 

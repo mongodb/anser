@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+//go:build freebsd
 // +build freebsd
 
 package unix_test
@@ -10,17 +11,19 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"golang.org/x/sys/unix"
 )
 
 func TestSysctlUint64(t *testing.T) {
-	_, err := unix.SysctlUint64("security.mac.labeled")
+	_, err := unix.SysctlUint64("vm.swap_total")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -157,6 +160,9 @@ func init() {
 }
 
 func TestCapEnter(t *testing.T) {
+	if runtime.GOARCH != "amd64" {
+		t.Skipf("skipping test on %s", runtime.GOARCH)
+	}
 	ExitsCorrectly(t, "cap_enter")
 }
 
@@ -253,6 +259,9 @@ func init() {
 }
 
 func TestOpenat(t *testing.T) {
+	if runtime.GOARCH != "amd64" {
+		t.Skipf("skipping test on %s", runtime.GOARCH)
+	}
 	ExitsCorrectly(t, "openat")
 }
 
@@ -287,4 +296,54 @@ func TestCapRightsSetAndClear(t *testing.T) {
 	if !b {
 		t.Fatalf("Wrong rights set")
 	}
+}
+
+func TestGetsockoptXucred(t *testing.T) {
+	fds, err := unix.Socketpair(unix.AF_LOCAL, unix.SOCK_STREAM, 0)
+	if err != nil {
+		t.Fatalf("Socketpair: %v", err)
+	}
+
+	srvFile := os.NewFile(uintptr(fds[0]), "server")
+	cliFile := os.NewFile(uintptr(fds[1]), "client")
+	defer srvFile.Close()
+	defer cliFile.Close()
+
+	srv, err := net.FileConn(srvFile)
+	if err != nil {
+		t.Fatalf("FileConn: %v", err)
+	}
+	defer srv.Close()
+
+	cli, err := net.FileConn(cliFile)
+	if err != nil {
+		t.Fatalf("FileConn: %v", err)
+	}
+	defer cli.Close()
+
+	cred, err := unix.GetsockoptXucred(fds[1], unix.SOL_LOCAL, unix.LOCAL_PEERCRED)
+	if err == unix.ENOTCONN {
+		t.Skip("GetsockoptXucred not supported with Socketpair on FreeBSD 11 and earlier")
+	} else if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("got: %+v", cred)
+	if got, want := cred.Uid, os.Getuid(); int(got) != int(want) {
+		t.Errorf("uid = %v; want %v", got, want)
+	}
+}
+
+// stringsFromByteSlice converts a sequence of attributes to a []string.
+// On FreeBSD, each entry consists of a single byte containing the length
+// of the attribute name, followed by the attribute name.
+// The name is _not_ NULL-terminated.
+func stringsFromByteSlice(buf []byte) []string {
+	var result []string
+	i := 0
+	for i < len(buf) {
+		next := i + 1 + int(buf[i])
+		result = append(result, string(buf[i+1:next]))
+		i = next
+	}
+	return result
 }
