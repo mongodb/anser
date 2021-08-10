@@ -16,12 +16,10 @@ import (
 // WrapClient provides the anser database Session interface, which is
 // modeled on mgo's interface but based on new mongo.Client fundamentals.
 func WrapClient(ctx context.Context, client *mongo.Client) Session {
-	maxTime := time.Duration(0)
 	return &sessionWrapper{
 		ctx:     ctx,
 		client:  client,
 		catcher: grip.NewCatcher(),
-		maxTime: &maxTime,
 	}
 }
 
@@ -30,7 +28,6 @@ type sessionWrapper struct {
 	canceler context.CancelFunc
 	client   *mongo.Client
 	catcher  grip.Catcher
-	maxTime  *time.Duration
 	isClone  bool
 }
 
@@ -38,14 +35,13 @@ func (s *sessionWrapper) Clone() Session { s.isClone = true; return s }
 func (s *sessionWrapper) Copy() Session  { s.isClone = true; return s }
 func (s *sessionWrapper) Error() error   { return s.catcher.Resolve() }
 func (s *sessionWrapper) SetSocketTimeout(d time.Duration) {
-	*s.maxTime = d
+	s.ctx, s.canceler = context.WithTimeout(s.ctx, d)
 }
 
 func (s *sessionWrapper) DB(name string) Database {
 	return &databaseWrapper{
 		ctx:      s.ctx,
 		database: s.client.Database(name),
-		maxTime:  s.maxTime,
 	}
 }
 
@@ -63,33 +59,26 @@ func (s *sessionWrapper) Close() {
 type databaseWrapper struct {
 	ctx      context.Context
 	database *mongo.Database
-	maxTime  *time.Duration
 }
 
 func (d *databaseWrapper) Name() string        { return d.database.Name() }
 func (d *databaseWrapper) DropDatabase() error { return errors.WithStack(d.database.Drop(d.ctx)) }
 func (d *databaseWrapper) C(coll string) Collection {
 	return &collectionWrapper{
-		ctx:     d.ctx,
-		coll:    d.database.Collection(coll),
-		maxTime: d.maxTime,
+		ctx:  d.ctx,
+		coll: d.database.Collection(coll),
 	}
 }
 
 type collectionWrapper struct {
-	ctx     context.Context
-	coll    *mongo.Collection
-	maxTime *time.Duration
+	ctx  context.Context
+	coll *mongo.Collection
 }
 
 func (c *collectionWrapper) DropCollection() error { return errors.WithStack(c.coll.Drop(c.ctx)) }
 
 func (c *collectionWrapper) Pipe(p interface{}) Results {
-	opts := options.Aggregate().SetAllowDiskUse(true)
-	if c.maxTime != nil && *c.maxTime > 0 {
-		opts.SetMaxTime(*c.maxTime)
-	}
-	cursor, err := c.coll.Aggregate(c.ctx, p, opts)
+	cursor, err := c.coll.Aggregate(c.ctx, p, options.Aggregate().SetAllowDiskUse(true))
 
 	return &resultsWrapper{
 		err:    err,
@@ -100,19 +89,17 @@ func (c *collectionWrapper) Pipe(p interface{}) Results {
 
 func (c *collectionWrapper) Find(q interface{}) Query {
 	return &queryWrapper{
-		ctx:     c.ctx,
-		coll:    c.coll,
-		filter:  q,
-		maxTime: c.maxTime,
+		ctx:    c.ctx,
+		coll:   c.coll,
+		filter: q,
 	}
 }
 
 func (c *collectionWrapper) FindId(id interface{}) Query {
 	return &queryWrapper{
-		ctx:     c.ctx,
-		coll:    c.coll,
-		filter:  bson.D{{Key: "_id", Value: id}},
-		maxTime: c.maxTime,
+		ctx:    c.ctx,
+		coll:   c.coll,
+		filter: bson.D{{Key: "_id", Value: id}},
 	}
 }
 
@@ -419,7 +406,6 @@ type queryWrapper struct {
 	skip       int
 	sort       []string
 	hint       interface{}
-	maxTime    *time.Duration
 }
 
 func (q *queryWrapper) Limit(l int) Query             { q.limit = l; return q }
@@ -513,9 +499,6 @@ func (q *queryWrapper) exec() error {
 	}
 	if q.hint != "" {
 		opts.SetHint(q.hint)
-	}
-	if q.maxTime != nil && *q.maxTime > 0 {
-		opts.SetMaxTime(*q.maxTime)
 	}
 
 	var err error
