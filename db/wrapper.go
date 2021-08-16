@@ -449,7 +449,8 @@ func (q *queryWrapper) exec() error {
 		q.filter = struct{}{}
 	}
 
-	opts := options.Find()
+	opts := options.Find().SetHint(q.hint)
+
 	if q.projection != nil {
 		opts.SetProjection(q.projection)
 	}
@@ -461,9 +462,6 @@ func (q *queryWrapper) exec() error {
 	}
 	if q.skip > 0 {
 		opts.SetSkip(int64(q.skip))
-	}
-	if q.hint != "" {
-		opts.SetHint(q.hint)
 	}
 	if q.maxTime > 0 {
 		opts.SetMaxTime(q.maxTime)
@@ -528,10 +526,10 @@ func (a *aggregationWrapper) exec() error {
 		return nil
 	}
 
-	opts := options.Aggregate().SetAllowDiskUse(true)
-	if a.hint != "" {
-		opts.SetHint(a.hint)
-	}
+	opts := options.Aggregate().
+		SetAllowDiskUse(true).
+		SetHint(a.hint)
+
 	if a.maxTime > 0 {
 		opts.SetMaxTime(a.maxTime)
 	}
