@@ -173,5 +173,5 @@ func (e *Environment) Close() error {
 	return catcher.Resolve()
 }
 
-func (e *Environment) PreferClient() bool           { return e.ShouldPreferClient }
-func (e *Environment) SetPreferedDB(in interface{}) { e.PreferedSetup = in }
+func (e *Environment) PreferClient() bool            { return e.ShouldPreferClient }
+func (e *Environment) SetPreferredDB(in interface{}) { e.PreferedSetup = in }

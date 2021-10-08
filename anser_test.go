@@ -69,7 +69,7 @@ func (s *ApplicationSuite) TestRunMethodErrorsIfQueueHasError() {
 }
 
 func (s *ApplicationSuite) TestRunErrorsWithCanceledContext() {
-	s.NoError(s.app.Setup(s.env))
+	s.Require().NoError(s.app.Setup(s.env))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()

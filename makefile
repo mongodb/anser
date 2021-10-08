@@ -57,8 +57,8 @@ phony := compile lint test coverage coverage-html
 # start convenience targets for running tests and coverage tasks on a
 # specific package.
 test-%: $(buildDir)/output.%.test
-	@!( grep -s -q "^FAIL" $@ && grep -s -q "^WARNING: DATA RACE" $@)
-	@(grep -s -q "^PASS" $@ || grep -s -q "no test files" $@)
+	@!( grep -s -q "^FAIL" $< && grep -s -q "^WARNING: DATA RACE" $<)
+	@(grep -s -q "^PASS" $< || grep -s -q "no test files" $<)
 coverage-%: $(buildDir)/output.%.coverage
 	@grep -s -q -e "^PASS" $(subst coverage,test,$<)
 html-coverage-%: $(buildDir)/output.%.coverage $(buildDir)/output.%.coverage.html

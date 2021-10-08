@@ -3,7 +3,7 @@ package db
 import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo"
-	mgo "gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2"
 )
 
 var errNotFound = errors.New("document not found")

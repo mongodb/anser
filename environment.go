@@ -23,7 +23,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo"
-	mgo "gopkg.in/mgo.v2"
 )
 
 const (
@@ -43,8 +42,6 @@ func init() { ResetEnvironment() }
 // Implementations should be thread-safe, and are not required to be
 // reconfigurable after their initial configuration.
 type Environment interface {
-	// kim: QUESTION: is the db.Session still necessary or is it a legacy mgo
-	// thing?
 	Setup(amboy.Queue, client.Client, db.Session) error
 	GetSession() (db.Session, error)
 	GetClient() (client.Client, error)
@@ -66,7 +63,7 @@ type Environment interface {
 	RegisterCloser(func() error)
 	Close() error
 
-	SetPreferedDB(interface{})
+	SetPreferredDB(interface{})
 	PreferClient() bool
 }
 
@@ -331,7 +328,7 @@ func (e *envState) Close() error {
 	return catcher.Resolve()
 }
 
-func (e *envState) SetPreferedDB(in interface{}) {
+func (e *envState) SetPreferredDB(in interface{}) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
@@ -342,8 +339,6 @@ func (e *envState) SetPreferedDB(in interface{}) {
 		e.preferClient = true
 	case *mongo.Client:
 		e.preferClient = true
-	case *mgo.Session:
-		e.preferClient = false
 	}
 }
 

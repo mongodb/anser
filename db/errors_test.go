@@ -5,7 +5,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	mgo "gopkg.in/mgo.v2"
+	"go.mongodb.org/mongo-driver/mongo"
+	"gopkg.in/mgo.v2"
 )
 
 func TestResultsPredicate(t *testing.T) {
@@ -15,4 +16,6 @@ func TestResultsPredicate(t *testing.T) {
 	assert.False(ResultsNotFound(nil))
 	assert.False(ResultsNotFound(errors.New("not found")))
 	assert.True(ResultsNotFound(mgo.ErrNotFound))
+	assert.True(ResultsNotFound(mongo.ErrNoDocuments))
+	assert.True(ResultsNotFound(errNotFound))
 }

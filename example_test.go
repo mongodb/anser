@@ -31,7 +31,7 @@ func proofOfConcept() error {
 	}
 
 	client := client.WrapClient(cl)
-	env.SetPreferedDB(client)
+	env.SetPreferredDB(client)
 	session := db.WrapClient(ctx, cl)
 
 	q := queue.NewAdaptiveOrderedLocalQueue(3, 3)
