@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -43,15 +42,12 @@ func (s *EnvImplSuite) SetupTest() {
 	s.cancel = cancel
 	s.NoError(s.q.Start(ctx))
 
-	mgoses, err := mgo.DialWithTimeout("mongodb://localhost:27017/", 10*time.Millisecond)
-	s.Require().NoError(err)
-	s.session = db.WrapSession(mgoses)
-
 	s.Require().Equal(globalEnv, GetEnvironment())
 
 	cl, err := mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27017").SetConnectTimeout(10 * time.Millisecond))
 	s.Require().NoError(err)
 	s.client = client.WrapClient(cl)
+	s.session = db.WrapClient(ctx, cl)
 
 	s.env = &envState{
 		migrations: make(map[string]migrationOp),
@@ -92,18 +88,6 @@ func (s *EnvImplSuite) TestUnstartedQueueCausesError() {
 	s.Error(s.env.Setup(queue.NewLocalLimitedSize(2, 256), s.client, s.session))
 	s.Nil(s.env.queue)
 	s.False(s.env.isSetup)
-}
-
-func (s *EnvImplSuite) TestDatabaseNameOverrideFromURI() {
-	s.env.isSetup = false
-	mgoses, err := mgo.DialWithTimeout("mongodb://localhost:27017/mci", 10*time.Millisecond)
-	s.Require().NoError(err)
-	session := db.WrapSession(mgoses)
-	defer session.Close()
-
-	s.NoError(s.env.Setup(s.q, s.client, session))
-	s.True(s.env.isSetup)
-	s.Equal("mci", s.env.metadataNS.DB)
 }
 
 func (s *EnvImplSuite) TestSessionAccessor() {

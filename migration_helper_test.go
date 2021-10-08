@@ -17,7 +17,6 @@ import (
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	mgo "gopkg.in/mgo.v2"
 )
 
 type MigrationHelperSuite struct {
@@ -48,14 +47,12 @@ func (s *MigrationHelperSuite) SetupSuite() {
 	s.queue = queue.NewLocalLimitedSize(4, 256)
 	s.NoError(s.queue.Start(ctx))
 
-	ses, err := mgo.DialWithTimeout("mongodb://localhost:27017", 10*time.Millisecond)
-	s.Require().NoError(err)
-	s.session = db.WrapSession(ses)
 	cl, err := mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27017").SetConnectTimeout(100 * time.Millisecond))
 	s.Require().NoError(err)
 	err = cl.Connect(ctx)
 	s.Require().NoError(err)
 	s.client = client.WrapClient(cl)
+	s.session = db.WrapClient(ctx, cl)
 }
 
 func (s *MigrationHelperSuite) TearDownSuite() {

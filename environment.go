@@ -43,6 +43,8 @@ func init() { ResetEnvironment() }
 // Implementations should be thread-safe, and are not required to be
 // reconfigurable after their initial configuration.
 type Environment interface {
+	// kim: QUESTION: is the db.Session still necessary or is it a legacy mgo
+	// thing?
 	Setup(amboy.Queue, client.Client, db.Session) error
 	GetSession() (db.Session, error)
 	GetClient() (client.Client, error)
