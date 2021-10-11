@@ -121,17 +121,12 @@ func (e *envState) Setup(q amboy.Queue, cl client.Client, session db.Session) er
 		return catcher.Resolve()
 	}
 
-	dbName := session.DB("").Name()
-	if dbName == "test" || dbName == "" {
-		dbName = defaultAnserDB
-	}
-
 	e.closers = append(e.closers, func() error { session.Close(); return nil })
 	e.queue = q
 	e.session = session
 	e.client = cl
 	e.metadataNS.Collection = defaultMetadataCollection
-	e.metadataNS.DB = dbName
+	e.metadataNS.DB = defaultAnserDB
 	e.isSetup = true
 	e.deps = newDependencyNetwork()
 
