@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func init() {
@@ -108,43 +107,6 @@ func (s *EnvImplSuite) TestDepNetworkAccessor() {
 	s.NotNil(network)
 	s.NotEqual(globalEnv.deps, network)
 	s.Equal(s.env.deps, network)
-}
-
-func (s *EnvImplSuite) TestLegacyManualMigrationOperationRegistry() {
-	count := 0
-
-	op := func(_ db.Session, _ bson.RawD) error { count++; return nil }
-	s.Len(s.env.migrations, 0)
-	s.NoError(s.env.RegisterLegacyManualMigrationOperation("foo", op))
-	s.Len(s.env.migrations, 1)
-	s.Error(s.env.RegisterLegacyManualMigrationOperation("foo", op))
-	s.Len(s.env.migrations, 1)
-
-	fun, ok := s.env.GetLegacyManualMigrationOperation("foo")
-	s.True(ok)
-	s.Equal(0, count)
-	s.NoError(fun(nil, bson.RawD{}))
-	s.Equal(1, count)
-
-	fun, ok = s.env.GetLegacyManualMigrationOperation("bar")
-	s.False(ok)
-	s.Zero(fun)
-}
-
-func (s *EnvImplSuite) TestLegacyDocumentProcessor() {
-	s.Len(s.env.processor, 0)
-	s.NoError(s.env.RegisterLegacyDocumentProcessor("foo", nil))
-	s.Len(s.env.processor, 1)
-	s.Error(s.env.RegisterLegacyDocumentProcessor("foo", nil))
-	s.Len(s.env.processor, 1)
-
-	dp, ok := s.env.GetLegacyDocumentProcessor("foo")
-	s.True(ok)
-	s.Nil(dp)
-
-	dp, ok = s.env.GetLegacyDocumentProcessor("bar")
-	s.False(ok)
-	s.Nil(dp)
 }
 
 func (s *EnvImplSuite) TestDependencyNetworkConstructor() {

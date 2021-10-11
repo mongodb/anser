@@ -20,24 +20,17 @@ import (
 )
 
 type MigrationHelperSuite struct {
-	env          *mock.Environment
-	mh           *migrationBase
-	session      db.Session
-	client       client.Client
-	queue        amboy.Queue
-	cancel       context.CancelFunc
-	preferClient bool
+	env     *mock.Environment
+	mh      *migrationBase
+	session db.Session
+	client  client.Client
+	queue   amboy.Queue
+	cancel  context.CancelFunc
 	suite.Suite
-}
-
-func TestLegacyMigrationHelperSuite(t *testing.T) {
-	s := new(MigrationHelperSuite)
-	suite.Run(t, s)
 }
 
 func TestClientMigrationHelperSuite(t *testing.T) {
 	s := new(MigrationHelperSuite)
-	s.preferClient = true
 	suite.Run(t, s)
 }
 
@@ -63,7 +56,6 @@ func (s *MigrationHelperSuite) SetupTest() {
 	s.env = mock.NewEnvironment()
 	s.env.MetaNS = model.Namespace{DB: "anserDB", Collection: "anserMeta"}
 	s.env.Queue = s.queue
-	s.env.ShouldPreferClient = s.preferClient
 	s.mh = NewMigrationHelper(s.env).(*migrationBase)
 
 	s.NoError(s.env.Setup(s.queue, s.client, s.session))
