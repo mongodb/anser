@@ -85,8 +85,6 @@ func TestDependencyEdgeProcessing(t *testing.T) {
 
 	// if we don't iterate (the default), then the number of edges of 1 will
 	// always be greater than 0, resulting  in a blocked state
-	// kim: TODO: might need a mock migration iterator since we don't have a
-	// legacy one anymore.
 	assert.Equal(dependency.Blocked, processEdges(ctx, 1, &legacyMigrationMetadataIterator{iter: &mock.Iterator{}}))
 
 	// if there are -1 edges (not possible in normal situations,
