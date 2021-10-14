@@ -63,13 +63,13 @@ phony := compile lint test coverage coverage-html
 # start convenience targets for running tests and coverage tasks on a
 # specific package.
 test-%: $(buildDir)/output.%.test
-	@grep -s -q -e "^PASS" $<
+	
 coverage-%: $(buildDir)/output.%.coverage
-	@grep -s -q -e "^PASS" $(subst coverage,test,$<)
+	
 html-coverage-%: $(buildDir)/output.%.coverage $(buildDir)/output.%.coverage.html
-	@grep -s -q -e "^PASS" $(subst coverage,test,$<)
+	
 lint-%: $(buildDir)/output.%.lint
-	@grep -v -s -q "^--- FAIL" $<
+	
 # end convenience targets
 # end basic development targets
 
@@ -84,7 +84,7 @@ endif
 ifneq (,$(SKIP_LONG))
 testArgs += -short
 endif
-ifneq (,$(DISABLE_COVERAGE))
+ifeq (,$(DISABLE_COVERAGE))
 testArgs += -cover
 endif
 ifneq (,$(RACE_DETECTOR))
@@ -92,9 +92,11 @@ testArgs += -race
 endif
 $(buildDir)/output.%.test: .FORCE
 	$(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) | tee $@
+	@grep -s -q -e "^PASS" $@
 $(buildDir)/output.%.coverage: .FORCE
 	$(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
 	@-[ -f $@ ] && $(gobin) tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
+	@grep -s -q -e "^PASS" $(subst coverage,test,$@)
 $(buildDir)/output.%.coverage.html: $(buildDir)/output.%.coverage
 	$(gobin) tool cover -html=$< -o $@
 
