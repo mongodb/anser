@@ -12,8 +12,8 @@ import (
 	"github.com/mongodb/anser/model"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func init() {
