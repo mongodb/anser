@@ -85,10 +85,9 @@ building migrations:
 Installation
 ------------
 
-Anser uses `grip <https://github.com/mongodb/grip>`_ for logging and
-`amboy <https://github.com/mongodb/amboy>`_ for task
-management. Because anser does not vendor these dependencies, you
-should also vendor them. 
+Anser uses Go modules. To download the modules ::
+
+    make mod-tidy
 
 Resources
 ---------
@@ -109,8 +108,8 @@ testing without depending on a running database instance.
 Project
 -------
 
-Please file feature requests and bug reports in the `MAKE project
-<https://jira.mongodb.com/browse/MAKE>`_ of the MongoDB Jira
+Please file feature requests and bug reports in the `EVG project
+<https://jira.mongodb.com/browse/EVG>`_ of the MongoDB Jira
 instance. This is also the place to file related amboy and grip
 requests.
 

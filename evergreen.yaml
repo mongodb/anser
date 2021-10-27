@@ -14,29 +14,32 @@ variables:
 #              Functions              #
 #######################################
 functions:
-  get-project:
-    command: git.get_project
-    type: setup
-    params:
-      directory: gopath/src/github.com/mongodb/anser
+  get-project-and-modules:
+    - command: git.get_project
+      type: system
+      params:
+        directory: anser
+    - command: subprocess.exec
+      type: setup
+      params:
+        working_dir: anser
+        binary: make
+        args: ["mod-tidy"]
+        include_expansions_in_env: ["GOROOT"]
   parse-results:
     command: gotest.parse_files
     type: setup
     params:
       files:
-        - "gopath/src/github.com/mongodb/anser/build/output.*"
+        - "anser/build/output.*"
   run-make:
     command: subprocess.exec
     type: test
     params:
-      working_dir: gopath/src/github.com/mongodb/anser/
+      working_dir: anser
       binary: make
       args: ["${make_args|}", "${target}"]
       include_expansions_in_env: ["DISABLE_COVERAGE", "GOROOT", "RACE_DETECTOR"]
-      env:
-        GOPATH: ${workdir}/gopath
-        VENDOR_PKG: "github.com/${trigger_repo_owner}/${trigger_repo_name}"
-        VENDOR_REVISION: ${trigger_revision}
   set-up-mongodb:
     - command: subprocess.exec
       type: setup
@@ -44,26 +47,23 @@ functions:
         include_expansions_in_env: ["MONGODB_URL"]
         env:
           DECOMPRESS: ${decompress}
-        working_dir: gopath/src/github.com/mongodb/anser/
+        working_dir: anser
         command: make get-mongodb
     - command: subprocess.exec
       type: setup
       params:
-        include_expansions_in_env: ["MONGODB_URL"]
         background: true
-        working_dir: gopath/src/github.com/mongodb/anser/
+        working_dir: anser
         command: make start-mongod
     - command: subprocess.exec
       type: setup
       params:
-        include_expansions_in_env: ["MONGODB_URL"]
-        working_dir: gopath/src/github.com/mongodb/anser/
+        working_dir: anser
         command: make check-mongod
     - command: subprocess.exec
       type: setup
       params:
-        include_expansions_in_env: ["MONGODB_URL"]
-        working_dir: gopath/src/github.com/mongodb/anser/
+        working_dir: anser
         command: make init-rs
 
 #######################################
@@ -73,6 +73,18 @@ functions:
 tasks:
   - <<: *run-build
     tags: ["test"]
+    name: test-anser
+  - <<: *run-build
+    tags: ["test"]
+    name: test-bsonutil
+  - <<: *run-build
+    tags: ["test"]
+    name: test-client
+  - <<: *run-build
+    tags: ["test"]
+    name: test-db
+  - <<: *run-build
+    tags: ["test"]
     name: test-apm
   - <<: *run-build
     tags: ["test"]
@@ -80,53 +92,48 @@ tasks:
   - <<: *run-build
     tags: ["test"]
     name: test-model
-  - <<: *run-build
-    tags: ["test"]
-    name: test-anser
-  - <<: *run-build
-    tags: ["test"]
-    name: test-db
-  - <<: *run-build
-    tags: ["test"]
-    name: test-client
 
   - <<: *run-build
     tags: ["lint"]
+    name: lint-anser
+  - <<: *run-build
+    tags: ["lint"]
     name: lint-apm
+  - <<: *run-build
+    tags: ["lint"]
+    name: lint-bsonutil
+  - <<: *run-build
+    tags: ["lint"]
+    name: lint-client
+  - <<: *run-build
+    tags: ["lint"]
+    name: lint-db
   - <<: *run-build
     tags: ["lint"]
     name: lint-mock
   - <<: *run-build
     tags: ["lint"]
     name: lint-model
-  - <<: *run-build
-    tags: ["lint"]
-    name: lint-anser
-  - <<: *run-build
-    tags: ["lint"]
-    name: lint-db
-  - <<: *run-build
-    tags: ["lint"]
-    name: lint-client
 
 task_groups:
   - name: lintGroup
-    tasks: [ ".lint"]
+    tasks: [".lint"]
     max_hosts: 2
+    setup_group_can_fail_task: true
     setup_group:
-      - func: get-project
+      - func: get-project-and-modules
     setup_task:
       - func: run-make
         vars: { target: "clean-results" }
     teardown_task:
       - func: parse-results
   - name: testGroup
-    tasks: [ ".test"]
+    tasks: [".test"]
     max_hosts: 2
     setup_group_can_fail_task: true
     share_processes: true
     setup_group:
-      - func: get-project
+      - func: get-project-and-modules
       - func: set-up-mongodb
     setup_task:
       - func: run-make
@@ -147,7 +154,7 @@ buildvariants:
       GOROOT: /opt/golang/go1.16
     run_on:
       - archlinux-new-small
-    tasks: [ "testGroup" ]
+    tasks: ["testGroup"]
 
   - name: lint
     display_name: Lint (Arch Linux)
@@ -155,7 +162,7 @@ buildvariants:
       GOROOT: /opt/golang/go1.16
     run_on:
       - archlinux-new-small
-    tasks: [ "lintGroup" ]
+    tasks: ["lintGroup"]
 
   - name: ubuntu
     display_name: Ubuntu 18.04
@@ -164,14 +171,14 @@ buildvariants:
       MONGODB_URL: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
     run_on:
       - ubuntu1804-small
-    tasks: [ "testGroup" ]
+    tasks: ["testGroup"]
 
   - name: macos
     display_name: macOS
     expansions:
-      DISABLE_COVERAGE: yes
+      DISABLE_COVERAGE: true
       GOROOT: /opt/golang/go1.16
       MONGODB_URL: https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-4.0.3.tgz
     run_on:
       - macos-1014
-    tasks: [ "testGroup" ]
+    tasks: ["testGroup"]

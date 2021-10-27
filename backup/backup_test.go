@@ -227,7 +227,7 @@ func TestBackup(t *testing.T) {
 		require.Equal(t, 1, doc.Lookup("indexes").MutableArray().Len())
 		require.Zero(t, doc.Lookup("uuid").StringValue())
 	})
-	t.Run("ProblmeGettingTarget", func(t *testing.T) {
+	t.Run("ProblemGettingTarget", func(t *testing.T) {
 		err = Collection(ctx, client, Options{
 			NS:     model.Namespace{DB: "foo", Collection: "noop"},
 			Target: files.TargetErrors,
