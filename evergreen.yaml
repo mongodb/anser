@@ -115,6 +115,15 @@ tasks:
     tags: ["lint"]
     name: lint-model
 
+  - name: verify-mod-tidy
+    commands:
+      - command: git.get_project
+        type: system
+        params:
+          directory: anser
+      - func: run-make
+        vars: { target: "${task_name}" }
+
 task_groups:
   - name: lintGroup
     tasks: [".lint"]
@@ -162,7 +171,9 @@ buildvariants:
       GOROOT: /opt/golang/go1.16
     run_on:
       - archlinux-new-small
-    tasks: ["lintGroup"]
+    tasks:
+      - lintGroup
+      - verify-mod-tidy
 
   - name: ubuntu
     display_name: Ubuntu 18.04
