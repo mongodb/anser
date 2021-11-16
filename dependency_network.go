@@ -6,9 +6,9 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/evergreen-ci/tarjan"
 	"github.com/mongodb/anser/model"
 	"github.com/mongodb/grip"
-	"github.com/tychoish/tarjan"
 )
 
 func newDependencyNetwork() model.DependencyNetworker {
