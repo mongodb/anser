@@ -39,7 +39,7 @@ functions:
       working_dir: anser
       binary: make
       args: ["${make_args|}", "${target}"]
-      include_expansions_in_env: ["DISABLE_COVERAGE", "GOROOT", "RACE_DETECTOR"]
+      include_expansions_in_env: ["GOROOT", "RACE_DETECTOR"]
   set-up-mongodb:
     - command: subprocess.exec
       type: setup
@@ -158,7 +158,6 @@ buildvariants:
     display_name: Race Detector (Arch Linux)
     expansions:
       RACE_DETECTOR: true
-      DISABLE_COVERAGE: true
       MONGODB_URL: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
       GOROOT: /opt/golang/go1.16
     run_on:
@@ -187,7 +186,6 @@ buildvariants:
   - name: macos
     display_name: macOS
     expansions:
-      DISABLE_COVERAGE: true
       GOROOT: /opt/golang/go1.16
       MONGODB_URL: https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-4.0.3.tgz
     run_on:
