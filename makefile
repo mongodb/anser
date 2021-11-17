@@ -69,8 +69,8 @@ $(buildDir)/run-linter: cmd/run-linter/run-linter.go $(buildDir)/golangci-lint
 testOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).test)
 lintOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).lint)
 coverageOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).coverage)
-coverageHtmlOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).coverage.html)
-.PRECIOUS: $(coverageOutput) $(coverageHtmlOutput) $(lintOutput) $(testOutput)
+htmlCoverageOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).coverage.html)
+.PRECIOUS: $(coverageOutput) $(htmlCoverageOutput) $(lintOutput) $(testOutput)
 # end output files
 
 # start basic development targets
@@ -79,8 +79,8 @@ compile:
 test: $(testOutput)
 lint: $(lintOutput)
 coverage: $(coverageOutput)
-coverage-html: $(coverageHtmlOutput)
-phony := compile lint test coverage coverage-html
+html-coverage: $(htmlCoverageOutput)
+phony := compile lint test coverage html-coverage
 
 # start convenience targets for running tests and coverage tasks on a
 # specific package.
@@ -88,7 +88,7 @@ test-%: $(buildDir)/output.%.test
 	
 coverage-%: $(buildDir)/output.%.coverage
 	
-html-coverage-%: $(buildDir)/output.%.coverage $(buildDir)/output.%.coverage.html
+html-coverage-%: $(buildDir)/output.%.coverage.html
 	
 lint-%: $(buildDir)/output.%.lint
 	
@@ -105,9 +105,6 @@ testArgs += -count=$(RUN_COUNT)
 endif
 ifneq (,$(SKIP_LONG))
 testArgs += -short
-endif
-ifeq (,$(DISABLE_COVERAGE))
-testArgs += -cover
 endif
 ifneq (,$(RACE_DETECTOR))
 testArgs += -race
