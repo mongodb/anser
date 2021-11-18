@@ -6,6 +6,7 @@ variables:
     # runs a build operations. The task name in evergreen should
     # correspond to a make target for the build operation.
     name: test
+    must_have_test_results: true
     commands:
       - func: run-make
         vars: { target: "${task_name}" }
