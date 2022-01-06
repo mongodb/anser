@@ -47,7 +47,7 @@ func TestSimpleMigrationJob(t *testing.T) {
 	t.Run("Client", func(t *testing.T) {
 		t.Run("SuccessfulOperation", func(t *testing.T) {
 			env.Client = mock.NewClient()
-			env.Client.Databases["foo"] = &mock.Database{DBName: "foo", Collections: map[string]*mock.Collection{"bar": &mock.Collection{UpdateResult: client.UpdateResult{ModifiedCount: 1}}}}
+			env.Client.Databases["foo"] = &mock.Database{DBName: "foo", Collections: map[string]*mock.Collection{"bar": {UpdateResult: client.UpdateResult{ModifiedCount: 1}}}}
 			// run a test were nothing happens so it's not an error
 			job = factory().(*simpleMigrationJob)
 			job.Definition.Namespace = model.Namespace{DB: "foo", Collection: "bar"}
@@ -58,7 +58,7 @@ func TestSimpleMigrationJob(t *testing.T) {
 		})
 		t.Run("FailedOperation", func(t *testing.T) {
 			env.Client = mock.NewClient()
-			env.Client.Databases["foo"] = &mock.Database{DBName: "foo", Collections: map[string]*mock.Collection{"bar": &mock.Collection{UpdateResult: client.UpdateResult{ModifiedCount: 0}}}}
+			env.Client.Databases["foo"] = &mock.Database{DBName: "foo", Collections: map[string]*mock.Collection{"bar": {UpdateResult: client.UpdateResult{ModifiedCount: 0}}}}
 			// run a test were nothing happens so it's not an error
 			job = factory().(*simpleMigrationJob)
 			job.Definition.Namespace = model.Namespace{DB: "foo", Collection: "bar"}
