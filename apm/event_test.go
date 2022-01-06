@@ -19,7 +19,7 @@ func TestEvent(t *testing.T) {
 		t.Run("Populated", func(t *testing.T) {
 			e := &eventWindow{
 				data: map[eventKey]*eventRecord{
-					{dbName: "db", collName: "coll", cmdName: "find"}: &eventRecord{},
+					{dbName: "db", collName: "coll", cmdName: "find"}: {},
 				},
 			}
 
@@ -53,7 +53,7 @@ func TestEvent(t *testing.T) {
 		t.Run("Populated", func(t *testing.T) {
 			e := &eventWindow{
 				data: map[eventKey]*eventRecord{
-					{dbName: "db", collName: "coll", cmdName: "find"}: &eventRecord{},
+					{dbName: "db", collName: "coll", cmdName: "find"}: {},
 				},
 			}
 			doc := e.Document()
@@ -64,7 +64,7 @@ func TestEvent(t *testing.T) {
 			e := &eventWindow{
 				allTags: true,
 				data: map[eventKey]*eventRecord{
-					{dbName: "db", collName: "coll", cmdName: "find"}: &eventRecord{Tags: map[string]int64{"one": 80}},
+					{dbName: "db", collName: "coll", cmdName: "find"}: {Tags: map[string]int64{"one": 80}},
 				},
 			}
 			doc := e.Document().Lookup("events").MutableDocument().Lookup("db.coll.find").MutableDocument()
@@ -75,7 +75,7 @@ func TestEvent(t *testing.T) {
 			e := &eventWindow{
 				tags: []string{"one", "two"},
 				data: map[eventKey]*eventRecord{
-					{dbName: "db", collName: "coll", cmdName: "find"}: &eventRecord{Tags: map[string]int64{"one": 80}},
+					{dbName: "db", collName: "coll", cmdName: "find"}: {Tags: map[string]int64{"one": 80}},
 				},
 			}
 			doc := e.Document().Lookup("events").MutableDocument().Lookup("db.coll.find").MutableDocument()

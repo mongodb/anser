@@ -100,7 +100,7 @@ func TestManualMigration(t *testing.T) {
 				env.Client = mock.NewClient()
 				res := mock.NewSingleResult()
 				res.ErrorValue = errors.New("not found")
-				env.Client.Databases["foo"] = &mock.Database{DBName: "foo", Collections: map[string]*mock.Collection{"bar": &mock.Collection{SingleResult: res}}}
+				env.Client.Databases["foo"] = &mock.Database{DBName: "foo", Collections: map[string]*mock.Collection{"bar": {SingleResult: res}}}
 
 				job = factory().(*manualMigrationJob)
 				job.Definition.Namespace = model.Namespace{DB: "foo", Collection: "bar"}
@@ -117,7 +117,7 @@ func TestManualMigration(t *testing.T) {
 				env.Client = mock.NewClient()
 				res := mock.NewSingleResult()
 				res.DecodeBytesError = errors.New("could not decode")
-				env.Client.Databases["foo"] = &mock.Database{DBName: "foo", Collections: map[string]*mock.Collection{"bar": &mock.Collection{SingleResult: res}}}
+				env.Client.Databases["foo"] = &mock.Database{DBName: "foo", Collections: map[string]*mock.Collection{"bar": {SingleResult: res}}}
 
 				job = factory().(*manualMigrationJob)
 				job.Definition.Namespace = model.Namespace{DB: "foo", Collection: "bar"}
@@ -134,7 +134,7 @@ func TestManualMigration(t *testing.T) {
 				env.Client = mock.NewClient()
 				res := mock.NewSingleResult()
 				res.DecodeBytesValue = []byte{}
-				env.Client.Databases["foo"] = &mock.Database{DBName: "foo", Collections: map[string]*mock.Collection{"bar": &mock.Collection{SingleResult: res}}}
+				env.Client.Databases["foo"] = &mock.Database{DBName: "foo", Collections: map[string]*mock.Collection{"bar": {SingleResult: res}}}
 
 				job = factory().(*manualMigrationJob)
 				job.Definition.Namespace = model.Namespace{DB: "foo", Collection: "bar"}
