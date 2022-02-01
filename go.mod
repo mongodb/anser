@@ -11,6 +11,6 @@ require (
 	github.com/mongodb/grip v0.0.0-20211101151816-abbea0c0d465
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.7.0
-	go.mongodb.org/mongo-driver v1.8.1
+	go.mongodb.org/mongo-driver v1.8.2
 	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22
 )
