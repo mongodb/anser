@@ -16,6 +16,7 @@ type Session interface {
 type Database interface {
 	Name() string
 	C(string) Collection
+	CreateCollection(coll string) (Collection, error)
 	DropDatabase() error
 }
 

@@ -58,8 +58,21 @@ type databaseWrapper struct {
 	database *mongo.Database
 }
 
-func (d *databaseWrapper) Name() string        { return d.database.Name() }
+func (d *databaseWrapper) Name() string { return d.database.Name() }
+
 func (d *databaseWrapper) DropDatabase() error { return errors.WithStack(d.database.Drop(d.ctx)) }
+
+func (d *databaseWrapper) CreateCollection(coll string) (Collection, error) {
+	if err := d.database.CreateCollection(d.ctx, coll); err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return &collectionWrapper{
+		ctx:  d.ctx,
+		coll: d.database.Collection(coll),
+	}, nil
+}
+
 func (d *databaseWrapper) C(coll string) Collection {
 	return &collectionWrapper{
 		ctx:  d.ctx,
