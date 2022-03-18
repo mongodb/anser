@@ -81,6 +81,19 @@ func (d *LegacyDatabase) C(n string) db.Collection {
 	return d.Collections[n]
 }
 
+func (d *LegacyDatabase) CreateCollection(coll string) (db.Collection, error) {
+	d.Mutex.Lock()
+	defer d.Mutex.Unlock()
+
+	if _, ok := d.Collections[coll]; ok {
+		return nil, errors.New("collection already exists")
+	}
+
+	d.Collections[coll] = &LegacyCollection{}
+
+	return d.Collections[coll], nil
+}
+
 func (d *LegacyDatabase) DropDatabase() error {
 	return nil
 }
