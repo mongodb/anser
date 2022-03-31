@@ -50,10 +50,10 @@ func Tag(data interface{}, fieldName string) (string, error) {
 func MustHaveTag(data interface{}, fieldName string) string {
 	tagValue, err := Tag(data, fieldName)
 	if err != nil {
-		panic(fmt.Sprintf("error getting bson tag: %s", err.Error()))
+		panic(errors.Wrap(err, "getting BSON tag").Error())
 	}
 	if tagValue == "" {
-		panic(fmt.Sprintf("field %v cannot have an empty bson tag", fieldName))
+		panic(fmt.Sprintf("field '%s' cannot have an empty bson tag", fieldName))
 	}
 	return tagValue
 }

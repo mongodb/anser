@@ -271,7 +271,6 @@ func TestMonitor(t *testing.T) {
 func resetMonitor(t *testing.T, in Monitor) {
 	switch m := in.(type) {
 	case *basicMonitor:
-		// m.config = nil
 		m.currentLock.Lock()
 		defer m.currentLock.Unlock()
 		m.current = m.config.window()
@@ -288,7 +287,7 @@ func resetMonitor(t *testing.T, in Monitor) {
 	}
 }
 
-func buildCommand(t *testing.T, doc *birch.Document) bson.Raw { //nolint: interfacer
+func buildCommand(t *testing.T, doc *birch.Document) bson.Raw {
 	raw, err := doc.MarshalBSON()
 	require.NoError(t, err)
 	return bson.Raw(raw)

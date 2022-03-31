@@ -73,7 +73,7 @@ func (a *Application) Setup(e Environment) error {
 	a.env = e
 	network, err := e.GetDependencyNetwork()
 	if err != nil {
-		return errors.Wrap(err, "problem getting dependency tracker")
+		return errors.Wrap(err, "getting dependency tracker")
 	}
 
 	for _, gen := range a.Generators {
@@ -87,7 +87,7 @@ func (a *Application) Setup(e Environment) error {
 func (a *Application) Run(ctx context.Context) error {
 	queue, err := a.env.GetQueue()
 	if err != nil {
-		return errors.Wrap(err, "problem getting queue")
+		return errors.Wrap(err, "getting queue")
 	}
 
 	catcher := grip.NewCatcher()
@@ -97,7 +97,7 @@ func (a *Application) Run(ctx context.Context) error {
 	}
 
 	if catcher.HasErrors() {
-		return errors.Wrap(catcher.Resolve(), "problem adding generation jobs")
+		return errors.Wrap(catcher.Resolve(), "adding generation jobs")
 	}
 
 	amboy.WaitInterval(ctx, queue, time.Second)
@@ -107,7 +107,7 @@ func (a *Application) Run(ctx context.Context) error {
 
 	numMigrations, err := addMigrationJobs(ctx, queue, a.Options.DryRun, a.Options.Limit)
 	if err != nil {
-		return errors.New("problem adding generated migration jobs")
+		return errors.Wrap(err, "adding generated migration jobs")
 	}
 
 	if a.Options.DryRun {
@@ -123,7 +123,7 @@ func (a *Application) Run(ctx context.Context) error {
 	}
 
 	if err := amboy.ResolveErrors(ctx, queue); err != nil {
-		return errors.Wrap(err, "encountered migration errors")
+		return errors.Wrap(err, "running migration jobs")
 	}
 
 	return nil
