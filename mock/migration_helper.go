@@ -30,7 +30,7 @@ func (m *MigrationHelper) FinishMigration(name string, j *job.Base) {
 	err := m.SaveMigrationEvent(&meta)
 	if err != nil {
 		j.AddError(err)
-		grip.Warningf(message.WrapError(err, "saving migration metadata"))
+		grip.Warning(message.WrapError(err, "saving migration metadata"))
 	}
 }
 

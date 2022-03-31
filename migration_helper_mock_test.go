@@ -35,7 +35,7 @@ func (m *MigrationHelperMock) FinishMigration(ctx context.Context, name string, 
 	err := m.SaveMigrationEvent(ctx, &meta)
 	if err != nil {
 		j.AddError(err)
-		grip.Warningf(message.WrapError(err, "saving migration metadata"))
+		grip.Warning(message.WrapError(err, "saving migration metadata"))
 	}
 }
 
