@@ -107,7 +107,7 @@ func (n *dependencyNetwork) Validate() error {
 
 	for id := range dependencies {
 		if _, ok := n.network[id]; !ok {
-			catcher.Add(fmt.Errorf("dependency '%s' is not defined", id))
+			catcher.Errorf("dependency '%s' is not defined", id)
 		}
 	}
 

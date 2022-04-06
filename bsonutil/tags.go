@@ -53,7 +53,7 @@ func MustHaveTag(data interface{}, fieldName string) string {
 		panic(errors.Wrap(err, "getting BSON tag").Error())
 	}
 	if tagValue == "" {
-		panic(fmt.Sprintf("field '%s' cannot have an empty bson tag", fieldName))
+		panic(fmt.Sprintf("field '%s' cannot have an empty BSON tag", fieldName))
 	}
 	return tagValue
 }
