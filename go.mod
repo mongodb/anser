@@ -5,7 +5,6 @@ go 1.16
 require (
 	github.com/evergreen-ci/birch v0.0.0-20220401151432-c792c3d8e0eb
 	github.com/evergreen-ci/tarjan v0.0.0-20170824211642-fcd3f3321826
-	github.com/evergreen-ci/utility v0.0.0-20220404192535-d16eb64796e6 // indirect
 	github.com/mongodb/amboy v0.0.0-20220408143015-94858bb64f00
 	github.com/mongodb/ftdc v0.0.0-20220401165013-13e4af55e809
 	github.com/mongodb/grip v0.0.0-20220401165023-6a1d9bb90c21
