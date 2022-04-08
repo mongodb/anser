@@ -598,7 +598,7 @@ func ResolveCursorOne(ctx context.Context, iter *mongo.Cursor, result interface{
 	catcher.Add(iter.Decode(result))
 	catcher.Add(iter.Err())
 
-	return errors.Wrap(catcher.Resolve(), "problem resolving result")
+	return errors.Wrap(catcher.Resolve(), "resolving result")
 }
 
 func transformDocument(val interface{}) (bsonx.Doc, error) {

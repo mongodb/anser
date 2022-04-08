@@ -5,6 +5,7 @@ import (
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/anser/model"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 )
 
 type MigrationHelper struct {
@@ -29,7 +30,7 @@ func (m *MigrationHelper) FinishMigration(name string, j *job.Base) {
 	err := m.SaveMigrationEvent(&meta)
 	if err != nil {
 		j.AddError(err)
-		grip.Warningf("encountered problem [%s] saving migration metadata", err.Error())
+		grip.Warning(message.WrapError(err, "saving migration metadata"))
 	}
 }
 

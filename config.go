@@ -73,7 +73,7 @@ func NewApplication(env Environment, conf *model.Configuration) (*Application, e
 	}
 
 	if err := app.Setup(env); err != nil {
-		return nil, errors.Wrap(err, "problem loading migration utility from config file")
+		return nil, errors.Wrap(err, "loading migration utility from config file")
 	}
 
 	return app, nil

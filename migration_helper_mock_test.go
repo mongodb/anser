@@ -7,6 +7,7 @@ import (
 	"github.com/mongodb/anser/mock"
 	"github.com/mongodb/anser/model"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 )
 
 // this has to be implemented in the anser package because of the
@@ -34,7 +35,7 @@ func (m *MigrationHelperMock) FinishMigration(ctx context.Context, name string, 
 	err := m.SaveMigrationEvent(ctx, &meta)
 	if err != nil {
 		j.AddError(err)
-		grip.Warningf("encountered problem [%s] saving migration metadata", err.Error())
+		grip.Warning(message.WrapError(err, "saving migration metadata"))
 	}
 }
 

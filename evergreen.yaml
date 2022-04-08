@@ -80,9 +80,6 @@ tasks:
     name: test-bsonutil
   - <<: *run-build
     tags: ["test"]
-    name: test-client
-  - <<: *run-build
-    tags: ["test"]
     name: test-db
   - <<: *run-build
     tags: ["test"]

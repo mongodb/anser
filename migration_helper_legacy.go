@@ -66,7 +66,7 @@ func (e *legacyMigrationBase) SaveMigrationEvent(ctx context.Context, m *model.M
 	ns := env.MetadataNamespace()
 	coll := session.DB(ns.DB).C(ns.Collection)
 	_, err = coll.UpsertId(m.ID, m)
-	return errors.Wrap(err, "problem inserting migration metadata")
+	return errors.Wrap(err, "inserting migration metadata")
 }
 
 func (e *legacyMigrationBase) FinishMigration(ctx context.Context, name string, j *job.Base) {

@@ -101,9 +101,9 @@ func (e *envState) Setup(q amboy.Queue, cl client.Client, session db.Session) er
 
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	catcher.NewWhen(e.isSetup, "reconfiguring a queue is not supported")
+	catcher.NewWhen(e.isSetup, "reconfiguring the environment is not supported")
 
-	catcher.NewWhen(!q.Info().Started, "configuring anser environment with a non-running queue")
+	catcher.NewWhen(!q.Info().Started, "cannot set up Anser environment with a non-running queue")
 
 	if catcher.HasErrors() {
 		return catcher.Resolve()
@@ -170,7 +170,7 @@ func (e *envState) RegisterManualMigrationOperation(name string, op client.Migra
 	defer e.mu.Unlock()
 
 	if _, ok := e.migrations[name]; ok {
-		return errors.Errorf("migration operation %s already exists", name)
+		return errors.Errorf("migration operation '%s' already exists", name)
 	}
 
 	e.migrations[name] = migrationOp{current: op}
@@ -190,7 +190,7 @@ func (e *envState) RegisterDocumentProcessor(name string, docp client.Processor)
 	defer e.mu.Unlock()
 
 	if _, ok := e.processor[name]; ok {
-		return errors.Errorf("document processor named %s already registered", name)
+		return errors.Errorf("document processor named '%s' already registered", name)
 	}
 
 	e.processor[name] = processor{current: docp}

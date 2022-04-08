@@ -59,7 +59,7 @@ func (j *simpleMigrationJob) Run(ctx context.Context) {
 
 	client, err := env.GetClient()
 	if err != nil {
-		j.AddError(errors.Wrap(err, "problem getting database client"))
+		j.AddError(errors.Wrap(err, "getting database client"))
 		return
 	}
 

@@ -92,7 +92,7 @@ func (e *Environment) GetDependencyNetwork() (model.DependencyNetworker, error) 
 
 func (e *Environment) RegisterManualMigrationOperation(name string, op client.MigrationOperation) error {
 	if _, ok := e.MigrationRegistry[name]; ok {
-		return errors.Errorf("migration operation %s already exists", name)
+		return errors.Errorf("migration operation '%s' already exists", name)
 	}
 
 	e.MigrationRegistry[name] = op
@@ -106,7 +106,7 @@ func (e *Environment) GetManualMigrationOperation(name string) (client.Migration
 
 func (e *Environment) RegisterDocumentProcessor(name string, docp client.Processor) error {
 	if _, ok := e.ProcessorRegistry[name]; ok {
-		return errors.Errorf("document processor named %s already registered", name)
+		return errors.Errorf("document processor '%s' already registered", name)
 	}
 
 	e.ProcessorRegistry[name] = docp

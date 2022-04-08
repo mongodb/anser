@@ -34,5 +34,4 @@ func (p *Processor) Migrate(cursor client.Cursor) error {
 	}
 
 	return p.MigrateError
-
 }

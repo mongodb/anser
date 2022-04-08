@@ -101,7 +101,7 @@ func (j *manualMigrationGenerator) generateJobs(ctx context.Context, env Environ
 		count++
 
 		if err := iter.Decode(&doc); err != nil {
-			grip.Error(message.WrapError(err, "problem decoding generator results"))
+			grip.Error(message.WrapError(err, "decoding generator results"))
 			break
 		}
 
