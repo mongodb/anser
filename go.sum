@@ -309,7 +309,6 @@ github.com/modern-go/reflect2 v0.0.0-20180701023420-4b7aa43c6742/go.mod h1:bx2lN
 github.com/mongodb/amboy v0.0.0-20220408143015-94858bb64f00 h1:IcY4k5HI+AzP9pBmN4dIpP+q58Y360DQjbxGSqZe7kE=
 github.com/mongodb/amboy v0.0.0-20220408143015-94858bb64f00/go.mod h1:pyAwlkip3M7Hw91UqQpTo9Oo7clNgGFdOqa9EvgvhbM=
 github.com/mongodb/ftdc v0.0.0-20211018154918-80dd1c22e4cf/go.mod h1:qd800FxWJIh4VUqu2d9Cmzdpv1CGXMqdwkntAKbaLlY=
-github.com/mongodb/ftdc v0.0.0-20220401165013-13e4af55e809 h1:CQVEigRr2M/OFIPn+wQWerSadMioMY1cLp22yZX+Ygk=
 github.com/mongodb/ftdc v0.0.0-20220401165013-13e4af55e809/go.mod h1:zz0HHFUU4/TOxl9TW4P9t3y3Ivx+sTWS2nwnhuYYRdw=
 github.com/mongodb/grip v0.0.0-20211018154934-e661a71929d5/go.mod h1:g0r93iHSTLD50bDT7vNj+z+Y3nKz9o/tQXtB9esq2tk=
 github.com/mongodb/grip v0.0.0-20220401165023-6a1d9bb90c21 h1:SBXhTs+Umg5AX4uBrNbfq6hbxJELFCN42j3fC7QJG+M=
