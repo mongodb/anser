@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/birch"
-	"github.com/mongodb/ftdc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
@@ -185,28 +184,13 @@ func TestMonitor(t *testing.T) {
 		t.Run("Wrapper", func(t *testing.T) {
 			m, ok = NewBasicMonitor(nil).(*basicMonitor)
 			require.True(t, ok)
-			t.Run("Logging", func(t *testing.T) {
-				nctx, ncancel := context.WithCancel(ctx)
-				defer ncancel()
-				wrapped := NewLoggingMonitor(nctx, 10*time.Millisecond, m)
-				assert.NotNil(t, wrapped)
-				assert.Implements(t, (*Monitor)(nil), wrapped)
-				time.Sleep(100 * time.Millisecond)
-				resetMonitor(t, m)
-			})
+			nctx, ncancel := context.WithCancel(ctx)
+			defer ncancel()
+			wrapped := NewLoggingMonitor(nctx, 10*time.Millisecond, m)
+			assert.NotNil(t, wrapped)
+			assert.Implements(t, (*Monitor)(nil), wrapped)
+			time.Sleep(100 * time.Millisecond)
 			resetMonitor(t, m)
-			t.Run("FTDC", func(t *testing.T) {
-				nctx, ncancel := context.WithCancel(ctx)
-				defer ncancel()
-				collector := ftdc.NewBaseCollector(10)
-				wrapped := NewFTDCMonitor(nctx, 10*time.Millisecond, collector, m)
-				assert.NotNil(t, wrapped)
-				assert.Implements(t, (*Monitor)(nil), wrapped)
-				time.Sleep(100 * time.Millisecond)
-				info := collector.Info()
-				assert.True(t, info.SampleCount > 5)
-
-			})
 		})
 	})
 	t.Run("Rotate", func(t *testing.T) {
@@ -280,8 +264,6 @@ func resetMonitor(t *testing.T, in Monitor) {
 		defer m.inProgLock.Unlock()
 		m.inProg = map[int64]eventKey{}
 
-	case *ftdcCollector:
-		resetMonitor(t, m.Monitor)
 	case *loggingMonitor:
 		resetMonitor(t, m.Monitor)
 	}
