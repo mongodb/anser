@@ -47,7 +47,6 @@ functions:
       params:
         include_expansions_in_env: ["MONGODB_URL"]
         env:
-          DECOMPRESS: ${decompress}
           MONGODB_URL: ${MONGODB_URL}
           MONGODB_DECOMPRESS: ${MONGODB_DECOMPRESS|*decompress}
         working_dir: anser
@@ -56,9 +55,7 @@ functions:
       type: setup
       params:
         command: make get-mongosh
-        include_expansions_in_env: ["MONGOSH_DOWNLOAD"]
         env:
-          DECOMPRESS: ${decompress}
           MONGOSH_URL: ${MONGOSH_URL}
           MONGOSH_DECOMPRESS: ${MONGOSH_DECOMPRESS|*decompress}
         working_dir: anser
