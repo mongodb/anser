@@ -2,7 +2,7 @@
 Package anser provides a document transformation and processing tool to
 support data migrations.
 
-Application
+# Application
 
 The anser.Application is the primary interface in which migrations are
 defined and executed. Applications are constructed with a list of
@@ -16,7 +16,6 @@ The ordering of migrations is derived from the dependency information
 between generators and the jobs that they generate. When possible jobs
 are executed in parallel, but the execution of migration operations is
 a property of the queue object configured in the anser.Environment.
-
 */
 package anser
 

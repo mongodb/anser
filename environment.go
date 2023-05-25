@@ -8,7 +8,6 @@ amboy.Queue objects, and registries for task implementations.
 
 The Environment is an interface: you can build a mock, or use one
 provided for testing purposes by anser (coming soon).
-
 */
 package anser
 

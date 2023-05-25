@@ -48,8 +48,20 @@ functions:
         include_expansions_in_env: ["MONGODB_URL"]
         env:
           DECOMPRESS: ${decompress}
+          MONGODB_URL: ${MONGODB_URL}
+          MONGODB_DECOMPRESS: ${MONGODB_DECOMPRESS|*decompress}
         working_dir: anser
         command: make get-mongodb
+    - command: subprocess.exec
+      type: setup
+      params:
+        command: make get-mongosh
+        include_expansions_in_env: ["MONGOSH_DOWNLOAD"]
+        env:
+          DECOMPRESS: ${decompress}
+          MONGOSH_URL: ${MONGOSH_URL}
+          MONGOSH_DECOMPRESS: ${MONGOSH_DECOMPRESS|*decompress}
+        working_dir: anser
     - command: subprocess.exec
       type: setup
       params:
@@ -152,40 +164,36 @@ task_groups:
 #           Buildvariants             #
 #######################################
 buildvariants:
-  - name: race-detector
-    display_name: Race Detector (Arch Linux)
-    expansions:
-      RACE_DETECTOR: true
-      MONGODB_URL: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
-      GOROOT: /opt/golang/go1.16
-    run_on:
-      - archlinux-new-small
-    tasks: ["testGroup"]
-
   - name: lint
-    display_name: Lint (Arch Linux)
+    display_name: Lint
     expansions:
-      GOROOT: /opt/golang/go1.16
+      GOROOT: /opt/golang/go1.20
+      MONGODB_URL: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-6.0.6.tgz
+      MONGOSH_URL: https://downloads.mongodb.com/compass/mongosh-1.9.0-linux-x64.tgz
     run_on:
-      - archlinux-new-small
+      - ubuntu2204-small
     tasks:
       - lintGroup
       - verify-mod-tidy
 
   - name: ubuntu
-    display_name: Ubuntu 18.04
+    display_name: Ubuntu 22.04
     expansions:
-      GOROOT: /opt/golang/go1.16
-      MONGODB_URL: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
+      GOROOT: /opt/golang/go1.20
+      RACE_DETECTOR: true
+      MONGODB_URL: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-6.0.6.tgz
+      MONGOSH_URL: https://downloads.mongodb.com/compass/mongosh-1.9.0-linux-x64.tgz
     run_on:
-      - ubuntu1804-small
+      - ubuntu2204-small
     tasks: ["testGroup"]
 
   - name: macos
     display_name: macOS
     expansions:
-      GOROOT: /opt/golang/go1.16
-      MONGODB_URL: https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-4.0.3.tgz
+      GOROOT: /opt/golang/go1.20
+      MONGODB_URL: https://fastdl.mongodb.org/osx/mongodb-macos-arm64-6.0.6.tgz
+      MONGOSH_URL: https://downloads.mongodb.com/compass/mongosh-1.9.0-darwin-arm64.zip
+      MONGOSH_DECOMPRESS: unzip
     run_on:
-      - macos-1014
+      - macos-1100-arm64
     tasks: ["testGroup"]
