@@ -45,7 +45,6 @@ functions:
     - command: subprocess.exec
       type: setup
       params:
-        include_expansions_in_env: ["MONGODB_URL"]
         env:
           MONGODB_URL: ${MONGODB_URL}
           MONGODB_DECOMPRESS: ${MONGODB_DECOMPRESS|*decompress}
@@ -165,8 +164,6 @@ buildvariants:
     display_name: Lint
     expansions:
       GOROOT: /opt/golang/go1.20
-      MONGODB_URL: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-6.0.6.tgz
-      MONGOSH_URL: https://downloads.mongodb.com/compass/mongosh-1.9.0-linux-x64.tgz
     run_on:
       - ubuntu2204-small
     tasks:
