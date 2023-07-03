@@ -5,8 +5,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-var errNotFound = errors.New("document not found")
+var ErrNotFound = errors.New("document not found")
 
 func ResultsNotFound(err error) bool {
-	return errors.Cause(err) == errNotFound || errors.Cause(err) == mongo.ErrNoDocuments
+	return errors.Cause(err) == ErrNotFound || errors.Cause(err) == mongo.ErrNoDocuments
 }
