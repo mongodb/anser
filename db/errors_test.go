@@ -15,5 +15,5 @@ func TestResultsPredicate(t *testing.T) {
 	assert.False(ResultsNotFound(nil))
 	assert.False(ResultsNotFound(errors.New("not found")))
 	assert.True(ResultsNotFound(mongo.ErrNoDocuments))
-	assert.True(ResultsNotFound(errNotFound))
+	assert.True(ResultsNotFound(ErrNotFound))
 }

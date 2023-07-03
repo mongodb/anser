@@ -205,7 +205,7 @@ func (c *collectionWrapper) Update(q interface{}, u interface{}) error {
 	}
 
 	if res.MatchedCount == 0 {
-		return errors.WithStack(errNotFound)
+		return errors.WithStack(ErrNotFound)
 	}
 
 	return nil
@@ -230,7 +230,7 @@ func (c *collectionWrapper) UpdateId(q interface{}, u interface{}) error {
 	}
 
 	if res.MatchedCount == 0 {
-		return errors.WithStack(errNotFound)
+		return errors.WithStack(ErrNotFound)
 	}
 
 	return nil
@@ -592,7 +592,7 @@ func ResolveCursorOne(ctx context.Context, iter *mongo.Cursor, result interface{
 	}()
 
 	if !iter.Next(ctx) {
-		return errors.WithStack(errNotFound)
+		return errors.WithStack(ErrNotFound)
 	}
 
 	catcher.Add(iter.Decode(result))
