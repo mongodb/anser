@@ -10,7 +10,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/x/bsonx"
 )
 
 // WrapClient provides the anser database Session interface, which is
@@ -601,39 +600,25 @@ func ResolveCursorOne(ctx context.Context, iter *mongo.Cursor, result interface{
 	return errors.Wrap(catcher.Resolve(), "resolving result")
 }
 
-func transformDocument(val interface{}) (bsonx.Doc, error) {
+func transformDocument(val interface{}) (bson.Raw, error) {
 	if val == nil {
 		return nil, errors.WithStack(mongo.ErrNilDocument)
 	}
 
-	if doc, ok := val.(bsonx.Doc); ok {
-		return doc.Copy(), nil
-	}
-
-	if bs, ok := val.([]byte); ok {
-		// Slight optimization so we'll just use MarshalBSON and not go through the codec machinery.
-		val = bson.Raw(bs)
-	}
-
-	// TODO(skriptble): Use a pool of these instead.
-	buf := make([]byte, 0, 256)
-	b, err := bson.MarshalAppendWithRegistry(bson.DefaultRegistry, buf[:0], val)
+	b, err := bson.Marshal(val)
 	if err != nil {
 		return nil, mongo.MarshalError{Value: val, Err: err}
 	}
 
-	return bsonx.ReadDoc(b)
+	return bson.Raw(b), nil
 }
 
-func hasDollarKey(doc bsonx.Doc) bool {
-	if len(doc) == 0 {
-		return false
-	}
-	if !strings.HasPrefix(doc[0].Key, "$") {
-		return false
+func hasDollarKey(doc bson.Raw) bool {
+	if elem, err := doc.IndexErr(0); err == nil && strings.HasPrefix(elem.Key(), "$") {
+		return true
 	}
 
-	return true
+	return false
 }
 
 func getSort(keys []string) bson.D {

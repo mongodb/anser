@@ -33,7 +33,7 @@ func proofOfConcept() error {
 	client := client.WrapClient(cl)
 	session := db.WrapClient(ctx, cl)
 
-	q := queue.NewAdaptiveOrderedLocalQueue(3, 3)
+	q := queue.NewLocalLimitedSize(3, 3)
 	if err := q.Start(ctx); err != nil {
 		return err
 	}

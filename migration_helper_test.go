@@ -113,7 +113,7 @@ func (s *MigrationHelperSuite) TestErrorCaseInMigrationFinishing() {
 
 	mh := NewMigrationHelper(env).(*migrationBase)
 
-	base := &job.Base{TaskID: "jobid"}
+	base := &job.Base{Name: "jobid"}
 	s.False(base.HasErrors())
 	s.False(base.Status().Completed)
 	mh.FinishMigration(ctx, "foo", base)
