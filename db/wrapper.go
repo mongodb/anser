@@ -145,7 +145,18 @@ func (c *collectionWrapper) RemoveAll(q interface{}) (*ChangeInfo, error) {
 }
 
 func (c *collectionWrapper) Upsert(q interface{}, u interface{}) (*ChangeInfo, error) {
-	res, err := c.coll.UpdateOne(c.ctx, q, u, options.Update().SetUpsert(true))
+	doc, err := transformDocument(u)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	var res *mongo.UpdateResult
+	if hasDollarKey(doc) {
+		res, err = c.coll.UpdateOne(c.ctx, q, u, options.Update().SetUpsert(true))
+	} else {
+		res, err = c.coll.ReplaceOne(c.ctx, q, u, options.Replace().SetUpsert(true))
+	}
+
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -154,9 +165,20 @@ func (c *collectionWrapper) Upsert(q interface{}, u interface{}) (*ChangeInfo, e
 }
 
 func (c *collectionWrapper) UpsertId(id interface{}, u interface{}) (*ChangeInfo, error) {
+	doc, err := transformDocument(u)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
 	query := bson.D{{Key: "_id", Value: id}}
 
-	res, err := c.coll.UpdateOne(c.ctx, query, u, options.Update().SetUpsert(true))
+	var res *mongo.UpdateResult
+	if hasDollarKey(doc) {
+		res, err = c.coll.UpdateOne(c.ctx, query, u, options.Update().SetUpsert(true))
+	} else {
+		res, err = c.coll.ReplaceOne(c.ctx, query, u, options.Replace().SetUpsert(true))
+	}
+
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -165,7 +187,18 @@ func (c *collectionWrapper) UpsertId(id interface{}, u interface{}) (*ChangeInfo
 }
 
 func (c *collectionWrapper) Update(q interface{}, u interface{}) error {
-	res, err := c.coll.UpdateOne(c.ctx, q, u)
+	doc, err := transformDocument(u)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	var res *mongo.UpdateResult
+	if hasDollarKey(doc) {
+		res, err = c.coll.UpdateOne(c.ctx, q, u)
+	} else {
+		res, err = c.coll.ReplaceOne(c.ctx, q, u)
+	}
+
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -177,9 +210,20 @@ func (c *collectionWrapper) Update(q interface{}, u interface{}) error {
 	return nil
 }
 func (c *collectionWrapper) UpdateId(q interface{}, u interface{}) error {
+	doc, err := transformDocument(u)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
 	query := bson.D{{Key: "_id", Value: q}}
 
-	res, err := c.coll.UpdateOne(c.ctx, query, u)
+	var res *mongo.UpdateResult
+	if hasDollarKey(doc) {
+		res, err = c.coll.UpdateOne(c.ctx, query, doc)
+	} else {
+		res, err = c.coll.ReplaceOne(c.ctx, query, doc)
+	}
+
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -372,12 +416,25 @@ func (q *queryWrapper) Apply(ch Change, result interface{}) (*ChangeInfo, error)
 
 		out.Removed++
 	} else if ch.Update != nil {
-		opts := options.FindOneAndUpdate().SetProjection(q.projection).SetUpsert(ch.Upsert).SetReturnDocument(getFindAndModifyReturn(ch.ReturnNew))
-		if q.sort != nil {
-			opts.SetSort(getSort(q.sort))
+		doc, err := transformDocument(ch.Update)
+		if err != nil {
+			return nil, errors.WithStack(err)
 		}
-		res = q.coll.FindOneAndUpdate(q.ctx, q.filter, ch.Update, opts)
 
+		if hasDollarKey(doc) {
+
+			opts := options.FindOneAndUpdate().SetProjection(q.projection).SetUpsert(ch.Upsert).SetReturnDocument(getFindAndModifyReturn(ch.ReturnNew))
+			if q.sort != nil {
+				opts.SetSort(getSort(q.sort))
+			}
+			res = q.coll.FindOneAndUpdate(q.ctx, q.filter, ch.Update, opts)
+		} else {
+			opts := options.FindOneAndReplace().SetProjection(q.projection).SetUpsert(ch.Upsert).SetReturnDocument(getFindAndModifyReturn(ch.ReturnNew))
+			if q.sort != nil {
+				opts.SetSort(getSort(q.sort))
+			}
+			res = q.coll.FindOneAndReplace(q.ctx, q.filter, ch.Update, opts)
+		}
 		out.Updated++
 	} else {
 		return nil, errors.New("invalid change defined")
@@ -541,6 +598,27 @@ func ResolveCursorOne(ctx context.Context, iter *mongo.Cursor, result interface{
 	catcher.Add(iter.Err())
 
 	return errors.Wrap(catcher.Resolve(), "resolving result")
+}
+
+func transformDocument(val interface{}) (bson.Raw, error) {
+	if val == nil {
+		return nil, errors.WithStack(mongo.ErrNilDocument)
+	}
+
+	b, err := bson.Marshal(val)
+	if err != nil {
+		return nil, mongo.MarshalError{Value: val, Err: err}
+	}
+
+	return bson.Raw(b), nil
+}
+
+func hasDollarKey(doc bson.Raw) bool {
+	if elem, err := doc.IndexErr(0); err == nil && strings.HasPrefix(elem.Key(), "$") {
+		return true
+	}
+
+	return false
 }
 
 func getSort(keys []string) bson.D {
