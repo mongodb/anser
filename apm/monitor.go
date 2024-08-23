@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/birch"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/event"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/event"
 )
 
 type basicMonitor struct {
@@ -116,7 +116,7 @@ func (m *basicMonitor) DriverAPM() *event.CommandMonitor {
 			defer event.mutex.Unlock()
 
 			event.Succeeded++
-			event.Duration += time.Duration(e.DurationNanos)
+			event.Duration += time.Duration(e.Duration.Nanoseconds())
 
 			m.addTags(ctx, event)
 		},
@@ -130,7 +130,7 @@ func (m *basicMonitor) DriverAPM() *event.CommandMonitor {
 			defer event.mutex.Unlock()
 
 			event.Failed++
-			event.Duration += time.Duration(e.DurationNanos)
+			event.Duration += time.Duration(e.Duration.Nanoseconds())
 
 			m.addTags(ctx, event)
 		},
