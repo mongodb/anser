@@ -21,9 +21,8 @@ import (
 	"strings"
 	"sync"
 
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/bsontype"
-	"go.mongodb.org/mongo-driver/event"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/event"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -203,7 +202,7 @@ func extractCollection(evt *event.CommandStartedEvent) (string, error) {
 	}
 	if key, err := elt.KeyErr(); err == nil && key == evt.CommandName {
 		var v bson.RawValue
-		if v, err = elt.ValueErr(); err != nil || v.Type != bsontype.String {
+		if v, err = elt.ValueErr(); err != nil || v.Type != bson.TypeString {
 			return "", err
 		}
 		return v.StringValue(), nil
