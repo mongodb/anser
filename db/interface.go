@@ -1,7 +1,5 @@
 package db
 
-import "time"
-
 // Session provides a subset of the functionality of the *mgo.Session
 // type.
 type Session interface {
@@ -50,13 +48,11 @@ type Query interface {
 	// name of the index as a string or the index specification as a document.
 	Hint(interface{}) Query
 	Apply(Change, interface{}) (*ChangeInfo, error)
-	MaxTime(time.Duration) Query
 	Results
 }
 
 type Aggregation interface {
 	Hint(interface{}) Aggregation
-	MaxTime(time.Duration) Aggregation
 	Results
 }
 

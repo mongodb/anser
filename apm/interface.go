@@ -3,7 +3,7 @@ package apm
 import (
 	"github.com/evergreen-ci/birch"
 	"github.com/mongodb/grip/message"
-	"go.mongodb.org/mongo-driver/event"
+	"go.mongodb.org/mongo-driver/v2/event"
 )
 
 // Monitor provides a high level command monitoring total.
