@@ -15,8 +15,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/v2/mongo"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type closableBuffer struct {
@@ -90,7 +90,10 @@ func TestBackup(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	client, err := mongo.Connect(options.Client().ApplyURI("mongodb://localhost:27017").SetConnectTimeout(time.Second))
+	client, err := mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27017").SetConnectTimeout(time.Second))
+	require.NoError(t, err)
+
+	err = client.Connect(ctx)
 	require.NoError(t, err)
 
 	defer func() {
@@ -239,15 +242,12 @@ func TestBackup(t *testing.T) {
 			Limit: 200,
 		}
 		assert.Nil(t, opts.Query)
-		qoptsBuilder := opts.getQueryOpts()
+		qopts := opts.getQueryOpts()
 		assert.NotNil(t, opts.Query)
 		assert.Equal(t, struct{}{}, opts.Query)
-		qopts := options.FindOptions{}
-		for _, opt := range qoptsBuilder.Opts {
-			require.NoError(t, opt(&qopts))
-		}
 		assert.EqualValues(t, 200, *qopts.Limit)
 		assert.EqualValues(t, opts.Sort, qopts.Sort)
 
 	})
+
 }
