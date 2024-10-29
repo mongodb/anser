@@ -32,7 +32,10 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-const defaultTracerName = "go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/mongo/otelmongo"
+const (
+	defaultTracerName      = "go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/mongo/otelmongo"
+	responseBytesAttribute = "db.response_bytes"
+)
 
 // config is used to configure the mongo tracer.
 type config struct {
@@ -156,14 +159,24 @@ func (m *monitor) Started(ctx context.Context, evt *event.CommandStartedEvent) {
 }
 
 func (m *monitor) Succeeded(ctx context.Context, evt *event.CommandSucceededEvent) {
-	m.Finished(&evt.CommandFinishedEvent, nil)
+	span, ok := m.getSpan(&evt.CommandFinishedEvent)
+	if !ok {
+		return
+	}
+	span.SetAttributes(attribute.Int(response_bytes_attribute, len(evt.Reply)))
+	span.End()
 }
 
 func (m *monitor) Failed(ctx context.Context, evt *event.CommandFailedEvent) {
-	m.Finished(&evt.CommandFinishedEvent, fmt.Errorf("%s", evt.Failure))
+	span, ok := m.getSpan(&evt.CommandFinishedEvent)
+	if !ok {
+		return
+	}
+	span.SetStatus(codes.Error, evt.Failure)
+	span.End()
 }
 
-func (m *monitor) Finished(evt *event.CommandFinishedEvent, err error) {
+func (m *monitor) getSpan(evt *event.CommandFinishedEvent) (trace.Span, bool) {
 	key := spanKey{
 		ConnectionID: evt.ConnectionID,
 		RequestID:    evt.RequestID,
@@ -174,15 +187,8 @@ func (m *monitor) Finished(evt *event.CommandFinishedEvent, err error) {
 		delete(m.spans, key)
 	}
 	m.Unlock()
-	if !ok {
-		return
-	}
 
-	if err != nil {
-		span.SetStatus(codes.Error, err.Error())
-	}
-
-	span.End()
+	return span, ok
 }
 
 // TODO sanitize values where possible, then reenable `db.statement` span attributes default.
