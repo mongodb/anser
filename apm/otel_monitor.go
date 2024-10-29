@@ -33,8 +33,8 @@ import (
 )
 
 const (
-	defaultTracerName        = "go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/mongo/otelmongo"
-	response_bytes_attribute = "db.response_bytes"
+	defaultTracerName      = "go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/mongo/otelmongo"
+	responseBytesAttribute = "db.response_bytes"
 )
 
 // config is used to configure the mongo tracer.
