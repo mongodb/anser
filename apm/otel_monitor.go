@@ -163,7 +163,7 @@ func (m *monitor) Succeeded(ctx context.Context, evt *event.CommandSucceededEven
 	if !ok {
 		return
 	}
-	span.SetAttributes(attribute.Int(response_bytes_attribute, len(evt.Reply)))
+	span.SetAttributes(attribute.Int(responseBytesAttribute, len(evt.Reply)))
 	span.End()
 }
 
