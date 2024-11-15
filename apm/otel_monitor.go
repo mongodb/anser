@@ -314,13 +314,15 @@ func extractAggregation(statement bson.Raw) (bson.Raw, error) {
 		return nil, errors.Wrap(err, "getting elements for aggregation statement")
 	}
 
+	var pipelineDoc bson.D
 	for _, elem := range elems {
 		if elem.Key() == "pipeline" {
-			return elem.Value().Value, nil
+			pipelineDoc = bson.D{bson.E{Key: elem.Key(), Value: elem.Value()}}
+			break
 		}
 	}
 
-	return nil, nil
+	return bson.Marshal(pipelineDoc)
 }
 
 func extractDelete(statement bson.Raw) (bson.Raw, error) {
