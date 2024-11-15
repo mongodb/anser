@@ -303,6 +303,8 @@ func operationSection(commandName string, raw bson.Raw) (bson.Raw, error) {
 		return extractFindAndModify(raw)
 	case "update":
 		return extractUpdate(raw)
+	case "insert":
+		return extractInsert(raw)
 	default:
 		return raw, nil
 	}
@@ -407,6 +409,23 @@ func extractUpdate(statement bson.Raw) (bson.Raw, error) {
 		}
 	}
 	return nil, nil
+}
+
+func extractInsert(statement bson.Raw) (bson.Raw, error) {
+	elems, err := statement.Elements()
+	if err != nil {
+		return nil, errors.Wrap(err, "getting elements for insert statement")
+	}
+
+	insertFields := []string{"ordered", "documents"}
+	var insertDoc bson.D
+	for _, elem := range elems {
+		if utility.StringSliceContains(insertFields, elem.Key()) {
+			insertDoc = append(insertDoc, bson.E{Key: elem.Key(), Value: elem.Value()})
+		}
+	}
+
+	return bson.Marshal(insertDoc)
 }
 
 func stripDocument(doc bson.Raw) (bson.Raw, error) {
