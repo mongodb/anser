@@ -24,7 +24,6 @@ import (
 	"sync"
 
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/bsontype"
@@ -144,14 +143,10 @@ func (m *monitor) Started(ctx context.Context, evt *event.CommandStartedEvent) {
 		if stmt := m.cfg.CommandTransformerFunc(evt.Command); stmt != "" {
 			if formattedStmt, err := extractStatement(evt.CommandName, stmt, false); err == nil && formattedStmt != "" {
 				attrs = append(attrs, semconv.DBStatement(formattedStmt))
-			} else {
-				grip.Error(errors.Wrap(err, "getting formatted statement"))
 			}
 
 			if strippedStatement, err := extractStatement(evt.CommandName, stmt, true); err == nil && strippedStatement != "" {
 				attrs = append(attrs, attribute.String(strippedStatementAttribute, strippedStatement))
-			} else {
-				grip.Error(errors.Wrap(err, "getting stripped statement"))
 			}
 		}
 	}
