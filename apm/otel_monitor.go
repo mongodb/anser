@@ -463,10 +463,31 @@ func stripValue(val bson.RawValue) (bson.RawValue, error) {
 			}
 			arr = append(arr, strippedVal)
 		}
+		arr = compactArray(arr)
 		_, encodedArray, err := bson.MarshalValue(arr)
 		return bson.RawValue{Type: bson.TypeArray, Value: encodedArray}, errors.Wrap(err, "encoding array")
 	default:
 		_, encodedValue, err := bson.MarshalValue(fmt.Sprintf("<%s>", val.Type.String()))
 		return bson.RawValue{Type: bson.TypeString, Value: encodedValue}, errors.Wrap(err, "encoding value")
 	}
+}
+
+func compactArray(arr bson.A) bson.A {
+	compactedArray := make(bson.A, 0, len(arr))
+	types := make(map[string]bool)
+	for _, elem := range arr {
+		elemVal, ok := elem.(bson.RawValue)
+		if !ok {
+			return arr
+		}
+		if elemVal.Type != bson.TypeString {
+			return arr
+		}
+		if !types[elemVal.StringValue()] {
+			compactedArray = append(compactedArray, elem)
+		}
+		types[elemVal.StringValue()] = true
+	}
+
+	return compactedArray
 }
