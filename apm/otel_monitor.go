@@ -375,7 +375,7 @@ func extractFindAndModify(statement bson.Raw) (bson.Raw, error) {
 		return nil, errors.Wrap(err, "getting elements for findAndModify statement")
 	}
 
-	findFields := []string{"query", "update"}
+	findFields := []string{"query", "update", "upsert"}
 	var findDoc bson.D
 	for _, elem := range elems {
 		if utility.StringSliceContains(findFields, elem.Key()) {
@@ -483,10 +483,14 @@ func compactArray(arr bson.A) bson.A {
 		if elemVal.Type != bson.TypeString {
 			return arr
 		}
-		if !types[elemVal.StringValue()] {
+		valString, ok := elemVal.StringValueOK()
+		if !ok {
+			return arr
+		}
+		if !types[valString] {
 			compactedArray = append(compactedArray, elem)
 		}
-		types[elemVal.StringValue()] = true
+		types[valString] = true
 	}
 
 	return compactedArray
