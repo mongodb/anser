@@ -128,7 +128,7 @@ func TestStripDocument(t *testing.T) {
 	}
 }
 
-func TestExtractStatement(t *testing.T) {
+func TestFormatStatement(t *testing.T) {
 	for name, testCase := range map[string]struct {
 		input       string
 		commandName string
@@ -554,7 +554,10 @@ func TestExtractStatement(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			val, err := extractStatement(testCase.commandName, testCase.input, testCase.stripped)
+			section, err := extractStatement(testCase.commandName, testCase.input)
+			assert.NoError(t, err)
+
+			val, err := formatStatement(section, testCase.stripped)
 			assert.NoError(t, err)
 			assert.Equal(t, testCase.expected, val)
 		})
