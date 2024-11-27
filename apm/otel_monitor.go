@@ -24,6 +24,8 @@ import (
 	"sync"
 
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/bsontype"
@@ -143,6 +145,8 @@ func (m *monitor) Started(ctx context.Context, evt *event.CommandStartedEvent) {
 		statementAttributes, err := m.dbStatementAttributes(evt)
 		if err == nil {
 			attrs = append(attrs, statementAttributes...)
+		} else {
+			grip.ErrorWhen(sometimes.Percent(10), errors.Wrap(err, "getting command attributes"))
 		}
 	}
 	if collection, err := extractCollection(evt); err == nil && collection != "" {
@@ -200,6 +204,8 @@ func (m *monitor) getSpan(evt *event.CommandFinishedEvent) (trace.Span, bool) {
 func (m *monitor) dbStatementAttributes(evt *event.CommandStartedEvent) ([]attribute.KeyValue, error) {
 	var attributes []attribute.KeyValue
 	command := m.cfg.CommandTransformerFunc(evt.Command)
+	// The transformer function can return nil if it doesn't want the contents of the statement
+	// included as an attribute. An example would be if it contains sensitive data.
 	if command == nil {
 		return nil, nil
 	}
