@@ -554,7 +554,10 @@ func TestFormatStatement(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			section, err := extractStatement(testCase.commandName, testCase.input)
+			var raw bson.Raw
+			require.NoError(t, bson.UnmarshalExtJSON([]byte(testCase.input), false, &raw))
+
+			section, err := operationSection(testCase.commandName, raw)
 			assert.NoError(t, err)
 
 			val, err := formatStatement(section, testCase.stripped)

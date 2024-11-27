@@ -102,7 +102,7 @@ func WithCommandAttributeDisabled(disabled bool) Option {
 
 // CommandTransformer defines a function that transforms a MongoDB command attribute.
 // If the function returns an empty string, the attribute will not be added to the Span.
-type CommandTransformer func(command bson.Raw) string
+type CommandTransformer func(command bson.Raw) bson.Raw
 
 // WithCommandAttributeTransformer specifies a function to transform the MongoDB command attribute.
 func WithCommandAttributeTransformer(transformer CommandTransformer) Option {
@@ -199,17 +199,14 @@ func (m *monitor) getSpan(evt *event.CommandFinishedEvent) (trace.Span, bool) {
 
 func (m *monitor) dbStatementAttributes(evt *event.CommandStartedEvent) ([]attribute.KeyValue, error) {
 	var attributes []attribute.KeyValue
-	stmt := m.cfg.CommandTransformerFunc(evt.Command)
-	if stmt == "" {
-		return nil, nil
-	}
+	command := m.cfg.CommandTransformerFunc(evt.Command)
 
-	statement, err := extractStatement(evt.CommandName, stmt)
+	section, err := operationSection(evt.CommandName, command)
 	if err != nil {
 		return nil, errors.Wrap(err, "extracting statement")
 	}
 
-	formattedStmt, err := formatStatement(statement, false)
+	formattedStmt, err := formatStatement(section, false)
 	if err != nil {
 		return nil, errors.Wrap(err, "formatting statement")
 	}
@@ -219,7 +216,7 @@ func (m *monitor) dbStatementAttributes(evt *event.CommandStartedEvent) ([]attri
 		attributes = append(attributes, semconv.DBStatement(formattedStmt))
 	}
 
-	strippedStatement, err := formatStatement(statement, true)
+	strippedStatement, err := formatStatement(section, true)
 	if err == nil {
 		return nil, errors.Wrap(err, "formatting stripped statement")
 	}
@@ -234,9 +231,8 @@ func (m *monitor) dbStatementAttributes(evt *event.CommandStartedEvent) ([]attri
 
 // TODO sanitize values where possible, then reenable `db.statement` span attributes default.
 // TODO limit maximum size.
-func transformCommand(command bson.Raw) string {
-	b, _ := bson.MarshalExtJSON(command, false, false)
-	return string(b)
+func transformCommand(command bson.Raw) bson.Raw {
+	return command
 }
 
 // extractCollection extracts the collection for the given mongodb command event.
@@ -283,15 +279,6 @@ func peerInfo(evt *event.CommandStartedEvent) (hostname string, port int) {
 		hostname = hostname[:idx]
 	}
 	return hostname, port
-}
-
-func extractStatement(commandName, statement string) (bson.Raw, error) {
-	var raw bson.Raw
-	if err := bson.UnmarshalExtJSON([]byte(statement), false, &raw); err != nil {
-		return nil, nil
-	}
-
-	return operationSection(commandName, raw)
 }
 
 func formatStatement(statement bson.Raw, stripped bool) (string, error) {
