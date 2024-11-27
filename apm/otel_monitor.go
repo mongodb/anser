@@ -200,6 +200,9 @@ func (m *monitor) getSpan(evt *event.CommandFinishedEvent) (trace.Span, bool) {
 func (m *monitor) dbStatementAttributes(evt *event.CommandStartedEvent) ([]attribute.KeyValue, error) {
 	var attributes []attribute.KeyValue
 	command := m.cfg.CommandTransformerFunc(evt.Command)
+	if command == nil {
+		return nil, nil
+	}
 
 	section, err := operationSection(evt.CommandName, command)
 	if err != nil {
