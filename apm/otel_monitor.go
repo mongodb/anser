@@ -140,14 +140,9 @@ func (m *monitor) Started(ctx context.Context, evt *event.CommandStartedEvent) {
 		semconv.NetTransportTCP,
 	}
 	if !m.cfg.CommandAttributeDisabled {
-		if stmt := m.cfg.CommandTransformerFunc(evt.Command); stmt != "" {
-			if formattedStmt, err := extractStatement(evt.CommandName, stmt, false); err == nil && formattedStmt != "" {
-				attrs = append(attrs, semconv.DBStatement(formattedStmt))
-			}
-
-			if strippedStatement, err := extractStatement(evt.CommandName, stmt, true); err == nil && strippedStatement != "" {
-				attrs = append(attrs, attribute.String(strippedStatementAttribute, strippedStatement))
-			}
+		statementAttributes, err := m.dbStatementAttributes(evt)
+		if err == nil {
+			attrs = append(attrs, statementAttributes...)
 		}
 	}
 	if collection, err := extractCollection(evt); err == nil && collection != "" {
@@ -200,6 +195,41 @@ func (m *monitor) getSpan(evt *event.CommandFinishedEvent) (trace.Span, bool) {
 	m.Unlock()
 
 	return span, ok
+}
+
+func (m *monitor) dbStatementAttributes(evt *event.CommandStartedEvent) ([]attribute.KeyValue, error) {
+	var attributes []attribute.KeyValue
+	stmt := m.cfg.CommandTransformerFunc(evt.Command)
+	if stmt == "" {
+		return nil, nil
+	}
+
+	statement, err := extractStatement(evt.CommandName, stmt)
+	if err != nil {
+		return nil, errors.Wrap(err, "extracting statement")
+	}
+
+	formattedStmt, err := formatStatement(statement, false)
+	if err != nil {
+		return nil, errors.Wrap(err, "formatting statement")
+	}
+	if formattedStmt != "" {
+		// Add an attribute with the actual command. This is useful for reproducing queries
+		// to debug why they're taking longer than expected.
+		attributes = append(attributes, semconv.DBStatement(formattedStmt))
+	}
+
+	strippedStatement, err := formatStatement(statement, true)
+	if err == nil {
+		return nil, errors.Wrap(err, "formatting stripped statement")
+	}
+	if strippedStatement != "" {
+		// Add an attribute with the command stripped of its values. This is useful for grouping
+		// all the instances of a query together even when their values differ.
+		attributes = append(attributes, attribute.String(strippedStatementAttribute, strippedStatement))
+	}
+
+	return attributes, nil
 }
 
 // TODO sanitize values where possible, then reenable `db.statement` span attributes default.
@@ -255,28 +285,25 @@ func peerInfo(evt *event.CommandStartedEvent) (hostname string, port int) {
 	return hostname, port
 }
 
-func extractStatement(commandName, statement string, stripped bool) (string, error) {
+func extractStatement(commandName, statement string) (bson.Raw, error) {
 	var raw bson.Raw
 	if err := bson.UnmarshalExtJSON([]byte(statement), false, &raw); err != nil {
-		return "", nil
+		return nil, nil
 	}
 
-	section, err := operationSection(commandName, raw)
-	if err != nil {
-		return "", errors.Wrap(err, "getting section to strip")
-	}
-	if section == nil {
-		return "", nil
-	}
+	return operationSection(commandName, raw)
+}
 
+func formatStatement(statement bson.Raw, stripped bool) (string, error) {
+	var err error
 	if stripped {
-		section, err = stripDocument(section)
+		statement, err = stripDocument(statement)
 		if err != nil {
 			return "", errors.Wrap(err, "stripping section values")
 		}
 	}
 
-	b, err := bson.MarshalExtJSON(section, false, false)
+	b, err := bson.MarshalExtJSON(statement, false, false)
 	if err != nil {
 		return "", errors.Wrap(err, "marshalling to extended JSON")
 	}
