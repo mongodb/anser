@@ -5,6 +5,7 @@ go 1.20
 require (
 	github.com/evergreen-ci/birch v0.0.0-20220401151432-c792c3d8e0eb
 	github.com/evergreen-ci/tarjan v0.0.0-20170824211642-fcd3f3321826
+	github.com/evergreen-ci/utility v0.0.0-20231017180358-3a3a0617644d
 	github.com/mongodb/amboy v0.0.0-20231019011216-6a7b0ad303b3
 	github.com/mongodb/grip v0.0.0-20231010153552-fd9e260891f5
 	github.com/pkg/errors v0.9.1
@@ -29,7 +30,6 @@ require (
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dghubble/oauth1 v0.7.2 // indirect
-	github.com/evergreen-ci/utility v0.0.0-20231017180358-3a3a0617644d // indirect
 	github.com/fatih/structs v1.1.0 // indirect
 	github.com/felixge/httpsnoop v1.0.3 // indirect
 	github.com/fuyufjh/splunk-hec-go v0.4.0 // indirect
