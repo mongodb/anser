@@ -226,7 +226,7 @@ func (m *monitor) dbStatementAttributes(evt *event.CommandStartedEvent) ([]attri
 	}
 
 	strippedStatement, err := formatStatement(section, true)
-	if err == nil {
+	if err != nil {
 		return nil, errors.Wrap(err, "formatting stripped statement")
 	}
 	if strippedStatement != "" {
