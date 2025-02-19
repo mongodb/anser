@@ -163,7 +163,7 @@ buildvariants:
   - name: lint
     display_name: Lint
     expansions:
-      GOROOT: /opt/golang/go1.20
+      GOROOT: /opt/golang/go1.24
     run_on:
       - ubuntu2204-small
     tasks:
@@ -173,7 +173,7 @@ buildvariants:
   - name: ubuntu
     display_name: Ubuntu 22.04
     expansions:
-      GOROOT: /opt/golang/go1.20
+      GOROOT: /opt/golang/go1.24
       RACE_DETECTOR: true
       MONGODB_URL: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-6.0.6.tgz
       MONGOSH_URL: https://downloads.mongodb.com/compass/mongosh-1.9.0-linux-x64.tgz
@@ -184,7 +184,7 @@ buildvariants:
   - name: macos
     display_name: macOS
     expansions:
-      GOROOT: /opt/golang/go1.20
+      GOROOT: /opt/golang/go1.24
       MONGODB_URL: https://fastdl.mongodb.org/osx/mongodb-macos-arm64-6.0.6.tgz
       MONGOSH_URL: https://downloads.mongodb.com/compass/mongosh-1.9.0-darwin-arm64.zip
       MONGOSH_DECOMPRESS: unzip
