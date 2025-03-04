@@ -483,9 +483,7 @@ func stripValue(val bson.RawValue) (bson.RawValue, error) {
 		}
 		arr = compactArray(arr)
 		_, encodedArray, err := bson.MarshalValue(arr)
-		copiedArr := make([]byte, len(encodedArray))
-		copy(copiedArr, encodedArray)
-		return bson.RawValue{Type: bson.TypeArray, Value: copiedArr}, errors.Wrap(err, "encoding array")
+		return bson.RawValue{Type: bson.TypeArray, Value: encodedArray}, errors.Wrap(err, "encoding array")
 	default:
 		_, encodedValue, err := bson.MarshalValue(fmt.Sprintf("<%s>", val.Type.String()))
 		return bson.RawValue{Type: bson.TypeString, Value: encodedValue}, errors.Wrap(err, "encoding value")
