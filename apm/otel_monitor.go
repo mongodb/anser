@@ -445,18 +445,54 @@ func extractInsert(statement bson.Raw) (bson.Raw, error) {
 	return bson.Marshal(insertDoc)
 }
 
+var onQ = false
+
 func stripDocument(doc bson.Raw) (bson.Raw, error) {
 	elems, err := doc.Elements()
 	if err != nil {
 		return nil, errors.Wrap(err, "enumerating document elements")
 	}
-	strippedDocument := bson.D{}
-	for _, elem := range elems {
+	strippedDocument := make(bson.D, len(elems))
+	for i, elem := range elems {
+		elem := elem
+		fmt.Println("\nStripping: ", elem.Key(), elem.Value())
+		if elem.Key() == "q" {
+			onQ = true
+		}
+		if elem.Key() == "distro" {
+
+			fmt.Println("BEFORE STRIPP DISTRO")
+			for _, elem := range strippedDocument {
+				fmt.Println("Elem: ", elem.Key, "value: ", elem.Value)
+			}
+			fmt.Println("BEFORE STRIPP DISTRO")
+		}
 		elemValue, err := stripValue(elem.Value())
+		if elem.Key() == "q" {
+			onQ = false
+		}
+		if elem.Key() == "distro" {
+			fmt.Println("AFTER STRIPP DISTRO")
+			for _, elem := range strippedDocument {
+				fmt.Println("Elem: ", elem.Key, "value: ", elem.Value)
+			}
+			fmt.Println("AFTER STRIPP DISTRO")
+		}
 		if err != nil {
 			return nil, errors.Wrap(err, "stripping document values")
 		}
-		strippedDocument = append(strippedDocument, bson.E{Key: elem.Key(), Value: elemValue})
+		if elem.Key() == "q" {
+			fmt.Println("====================== Stripped q: ", elemValue)
+		}
+		strippedDocument[i] = bson.E{Key: elem.Key(), Value: elemValue}
+	}
+
+	if onQ {
+		fmt.Println("last q: ", strippedDocument)
+
+		for _, elem := range strippedDocument {
+			fmt.Println("Elem: ", elem.Key, "value: ", elem.Value)
+		}
 	}
 
 	return bson.Marshal(strippedDocument)
@@ -482,9 +518,13 @@ func stripValue(val bson.RawValue) (bson.RawValue, error) {
 		}
 		arr = compactArray(arr)
 		_, encodedArray, err := bson.MarshalValue(arr)
-		return bson.RawValue{Type: bson.TypeArray, Value: encodedArray}, errors.Wrap(err, "encoding array")
+		copiedArr := make([]byte, len(encodedArray))
+		copy(copiedArr, encodedArray)
+		return bson.RawValue{Type: bson.TypeArray, Value: copiedArr}, errors.Wrap(err, "encoding array")
 	default:
 		_, encodedValue, err := bson.MarshalValue(fmt.Sprintf("<%s>", val.Type.String()))
+		// copyVal := make([]byte, len(encodedValue))
+		// copy(copyVal, encodedValue)
 		return bson.RawValue{Type: bson.TypeString, Value: encodedValue}, errors.Wrap(err, "encoding value")
 	}
 }
