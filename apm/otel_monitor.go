@@ -27,9 +27,8 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/bsontype"
-	"go.mongodb.org/mongo-driver/event"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/event"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -182,7 +181,7 @@ func (m *monitor) Failed(ctx context.Context, evt *event.CommandFailedEvent) {
 	if !ok {
 		return
 	}
-	span.SetStatus(codes.Error, evt.Failure)
+	span.SetStatus(codes.Error, evt.Failure.Error())
 	span.End()
 }
 
@@ -255,7 +254,7 @@ func extractCollection(evt *event.CommandStartedEvent) (string, error) {
 	}
 	if key, err := elt.KeyErr(); err == nil && key == evt.CommandName {
 		var v bson.RawValue
-		if v, err = elt.ValueErr(); err != nil || v.Type != bsontype.String {
+		if v, err = elt.ValueErr(); err != nil || v.Type != bson.TypeString {
 			return "", err
 		}
 		return v.StringValue(), nil
@@ -451,13 +450,14 @@ func stripDocument(doc bson.Raw) (bson.Raw, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "enumerating document elements")
 	}
-	strippedDocument := bson.D{}
-	for _, elem := range elems {
+	strippedDocument := make(bson.D, len(elems))
+	for i, elem := range elems {
+		elem := elem
 		elemValue, err := stripValue(elem.Value())
 		if err != nil {
 			return nil, errors.Wrap(err, "stripping document values")
 		}
-		strippedDocument = append(strippedDocument, bson.E{Key: elem.Key(), Value: elemValue})
+		strippedDocument[i] = bson.E{Key: elem.Key(), Value: elemValue}
 	}
 
 	return bson.Marshal(strippedDocument)

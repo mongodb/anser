@@ -11,7 +11,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 func init() {
@@ -77,7 +77,7 @@ func (j *manualMigrationJob) Run(ctx context.Context) {
 		j.AddError(err)
 		return
 	}
-	payload, err := res.DecodeBytes()
+	payload, err := res.Raw()
 	if err != nil {
 		j.AddError(err)
 		return

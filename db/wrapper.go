@@ -3,13 +3,12 @@ package db
 import (
 	"context"
 	"strings"
-	"time"
 
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 // WrapClient provides the anser database Session interface, which is
@@ -152,7 +151,7 @@ func (c *collectionWrapper) Upsert(q interface{}, u interface{}) (*ChangeInfo, e
 
 	var res *mongo.UpdateResult
 	if hasDollarKey(doc) {
-		res, err = c.coll.UpdateOne(c.ctx, q, u, options.Update().SetUpsert(true))
+		res, err = c.coll.UpdateOne(c.ctx, q, u, options.UpdateOne().SetUpsert(true))
 	} else {
 		res, err = c.coll.ReplaceOne(c.ctx, q, u, options.Replace().SetUpsert(true))
 	}
@@ -174,7 +173,7 @@ func (c *collectionWrapper) UpsertId(id interface{}, u interface{}) (*ChangeInfo
 
 	var res *mongo.UpdateResult
 	if hasDollarKey(doc) {
-		res, err = c.coll.UpdateOne(c.ctx, query, u, options.Update().SetUpsert(true))
+		res, err = c.coll.UpdateOne(c.ctx, query, u, options.UpdateOne().SetUpsert(true))
 	} else {
 		res, err = c.coll.ReplaceOne(c.ctx, query, u, options.Replace().SetUpsert(true))
 	}
@@ -381,7 +380,6 @@ type queryWrapper struct {
 	skip       int
 	sort       []string
 	hint       interface{}
-	maxTime    time.Duration
 }
 
 func (q *queryWrapper) Limit(l int) Query             { q.limit = l; return q }
@@ -389,7 +387,6 @@ func (q *queryWrapper) Select(proj interface{}) Query { q.projection = proj; ret
 func (q *queryWrapper) Sort(keys ...string) Query     { q.sort = append(q.sort, keys...); return q }
 func (q *queryWrapper) Skip(s int) Query              { q.skip = s; return q }
 func (q *queryWrapper) Hint(h interface{}) Query      { q.hint = h; return q }
-func (q *queryWrapper) MaxTime(d time.Duration) Query { q.maxTime = d; return q }
 func (q *queryWrapper) Count() (int, error) {
 	v, err := q.coll.CountDocuments(q.ctx, q.filter)
 	return int(v), errors.WithStack(err)
@@ -475,9 +472,6 @@ func (q *queryWrapper) exec() error {
 	if q.skip > 0 {
 		opts.SetSkip(int64(q.skip))
 	}
-	if q.maxTime > 0 {
-		opts.SetMaxTime(q.maxTime)
-	}
 
 	var err error
 
@@ -486,6 +480,8 @@ func (q *queryWrapper) exec() error {
 	return errors.WithStack(err)
 }
 
+// All executes the query(s). If you would like to specify a timeout,
+// please specify it via the context passed in to the construction of the query.
 func (q *queryWrapper) All(result interface{}) error {
 	if err := q.exec(); err != nil {
 		return errors.WithStack(err)
@@ -493,6 +489,8 @@ func (q *queryWrapper) All(result interface{}) error {
 	return errors.WithStack(q.cursor.All(q.ctx, result))
 }
 
+// One executes a single query. If you would like to specify a timeout,
+// please specify it via the context passed in to the construction of the query.
 func (q *queryWrapper) One(result interface{}) error {
 	q.limit = 1
 
@@ -527,11 +525,9 @@ type aggregationWrapper struct {
 	pipeline interface{}
 	cursor   *mongo.Cursor
 	hint     interface{}
-	maxTime  time.Duration
 }
 
-func (a *aggregationWrapper) Hint(hint interface{}) Aggregation   { a.hint = hint; return a }
-func (a *aggregationWrapper) MaxTime(d time.Duration) Aggregation { a.maxTime = d; return a }
+func (a *aggregationWrapper) Hint(hint interface{}) Aggregation { a.hint = hint; return a }
 
 func (a *aggregationWrapper) exec() error {
 	if a.cursor != nil {
@@ -542,16 +538,14 @@ func (a *aggregationWrapper) exec() error {
 		SetAllowDiskUse(true).
 		SetHint(a.hint)
 
-	if a.maxTime > 0 {
-		opts.SetMaxTime(a.maxTime)
-	}
-
 	var err error
 	a.cursor, err = a.coll.Aggregate(a.ctx, a.pipeline, opts)
 
 	return errors.WithStack(err)
 }
 
+// All executes the aggregation(s). If you would like to specify a timeout,
+// please specify it via the context passed in to the construction of the aggregation.
 func (a *aggregationWrapper) All(result interface{}) error {
 	if err := a.exec(); err != nil {
 		return errors.WithStack(err)
@@ -559,6 +553,8 @@ func (a *aggregationWrapper) All(result interface{}) error {
 	return errors.WithStack(a.cursor.All(a.ctx, result))
 }
 
+// One executes an aggregation. If you would like to specify a timeout,
+// please specify it via the context passed in to the construction of the aggregation.
 func (a *aggregationWrapper) One(result interface{}) error {
 	if err := a.exec(); err != nil {
 		return errors.WithStack(err)
