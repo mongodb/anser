@@ -13,8 +13,8 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/v2/mongo"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func init() {
@@ -43,7 +43,7 @@ func (s *EnvImplSuite) SetupTest() {
 
 	s.Require().Equal(globalEnv, GetEnvironment())
 
-	cl, err := mongo.Connect(options.Client().ApplyURI("mongodb://localhost:27017").SetConnectTimeout(10 * time.Millisecond))
+	cl, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://localhost:27017").SetConnectTimeout(10*time.Millisecond))
 	s.Require().NoError(err)
 	s.client = client.WrapClient(cl)
 	s.session = db.WrapClient(ctx, cl)

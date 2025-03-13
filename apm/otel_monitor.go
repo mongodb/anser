@@ -27,8 +27,8 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/event"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/event"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -181,7 +181,7 @@ func (m *monitor) Failed(ctx context.Context, evt *event.CommandFailedEvent) {
 	if !ok {
 		return
 	}
-	span.SetStatus(codes.Error, evt.Failure.Error())
+	span.SetStatus(codes.Error, evt.Failure)
 	span.End()
 }
 

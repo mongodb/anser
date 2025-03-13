@@ -6,9 +6,9 @@ import (
 
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/mongo"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // WrapClient provides the anser database Session interface, which is
@@ -151,7 +151,7 @@ func (c *collectionWrapper) Upsert(q interface{}, u interface{}) (*ChangeInfo, e
 
 	var res *mongo.UpdateResult
 	if hasDollarKey(doc) {
-		res, err = c.coll.UpdateOne(c.ctx, q, u, options.UpdateOne().SetUpsert(true))
+		res, err = c.coll.UpdateOne(c.ctx, q, u, options.Update().SetUpsert(true))
 	} else {
 		res, err = c.coll.ReplaceOne(c.ctx, q, u, options.Replace().SetUpsert(true))
 	}
@@ -173,7 +173,7 @@ func (c *collectionWrapper) UpsertId(id interface{}, u interface{}) (*ChangeInfo
 
 	var res *mongo.UpdateResult
 	if hasDollarKey(doc) {
-		res, err = c.coll.UpdateOne(c.ctx, query, u, options.UpdateOne().SetUpsert(true))
+		res, err = c.coll.UpdateOne(c.ctx, query, u, options.Update().SetUpsert(true))
 	} else {
 		res, err = c.coll.ReplaceOne(c.ctx, query, u, options.Replace().SetUpsert(true))
 	}

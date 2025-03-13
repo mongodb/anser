@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/birch"
-	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/event"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/event"
 )
 
 type basicMonitor struct {

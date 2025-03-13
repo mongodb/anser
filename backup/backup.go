@@ -11,8 +11,8 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/mongo"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // WriterCreator provides a way to create writers (e.g. for file or
@@ -53,7 +53,7 @@ func Collection(ctx context.Context, client *mongo.Client, opts Options) error {
 	return nil
 }
 
-func (opts *Options) getQueryOpts() *options.FindOptionsBuilder {
+func (opts *Options) getQueryOpts() *options.FindOptions {
 	qopts := options.Find()
 	if opts.Sort != nil {
 		qopts.SetSort(opts.Sort)
