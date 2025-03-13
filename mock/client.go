@@ -8,7 +8,7 @@ import (
 	"github.com/mongodb/anser/client"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type Client struct {
@@ -74,15 +74,15 @@ type Collection struct {
 }
 
 func (c *Collection) Name() string { return c.CollName }
-func (c *Collection) Aggregate(ctx context.Context, pipe interface{}, opts ...options.Lister[options.AggregateOptions]) (client.Cursor, error) {
+func (c *Collection) Aggregate(ctx context.Context, pipe interface{}, opts ...*options.AggregateOptions) (client.Cursor, error) {
 	return &Cursor{}, nil
 }
 
-func (c *Collection) Find(ctx context.Context, query interface{}, opts ...options.Lister[options.FindOptions]) (client.Cursor, error) {
+func (c *Collection) Find(ctx context.Context, query interface{}, opts ...*options.FindOptions) (client.Cursor, error) {
 	return &Cursor{}, c.FindError
 }
 
-func (c *Collection) FindOne(ctx context.Context, query interface{}, opts ...options.Lister[options.FindOneOptions]) client.SingleResult {
+func (c *Collection) FindOne(ctx context.Context, query interface{}, opts ...*options.FindOneOptions) client.SingleResult {
 	return c.SingleResult
 }
 
@@ -94,15 +94,15 @@ func (c *Collection) InsertMany(ctx context.Context, docs []interface{}) (*clien
 	return &c.InsertManyResult, nil
 }
 
-func (c *Collection) ReplaceOne(ctx context.Context, query, update interface{}, opts ...options.Lister[options.ReplaceOptions]) (*client.UpdateResult, error) {
+func (c *Collection) ReplaceOne(ctx context.Context, query, update interface{}, opts ...*options.ReplaceOptions) (*client.UpdateResult, error) {
 	return &c.UpdateResult, nil
 }
 
-func (c *Collection) UpdateOne(ctx context.Context, query, update interface{}, opts ...options.Lister[options.UpdateOneOptions]) (*client.UpdateResult, error) {
+func (c *Collection) UpdateOne(ctx context.Context, query, update interface{}, opts ...*options.UpdateOptions) (*client.UpdateResult, error) {
 	return &c.UpdateResult, nil
 }
 
-func (c *Collection) UpdateMany(ctx context.Context, query, update interface{}, opts ...options.Lister[options.UpdateManyOptions]) (*client.UpdateResult, error) {
+func (c *Collection) UpdateMany(ctx context.Context, query, update interface{}, opts ...*options.UpdateOptions) (*client.UpdateResult, error) {
 	return &c.UpdateResult, nil
 }
 

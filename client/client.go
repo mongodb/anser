@@ -3,8 +3,8 @@ package client
 import (
 	"context"
 
-	"go.mongodb.org/mongo-driver/v2/mongo"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type Client interface {
@@ -24,13 +24,13 @@ type Database interface {
 }
 
 type Collection interface {
-	Aggregate(context.Context, interface{}, ...options.Lister[options.AggregateOptions]) (Cursor, error)
-	Find(context.Context, interface{}, ...options.Lister[options.FindOptions]) (Cursor, error)
-	FindOne(context.Context, interface{}, ...options.Lister[options.FindOneOptions]) SingleResult
+	Aggregate(context.Context, interface{}, ...*options.AggregateOptions) (Cursor, error)
+	Find(context.Context, interface{}, ...*options.FindOptions) (Cursor, error)
+	FindOne(context.Context, interface{}, ...*options.FindOneOptions) SingleResult
 	Name() string
-	ReplaceOne(context.Context, interface{}, interface{}, ...options.Lister[options.ReplaceOptions]) (*UpdateResult, error)
-	UpdateOne(context.Context, interface{}, interface{}, ...options.Lister[options.UpdateOneOptions]) (*UpdateResult, error)
-	UpdateMany(context.Context, interface{}, interface{}, ...options.Lister[options.UpdateManyOptions]) (*UpdateResult, error)
+	ReplaceOne(context.Context, interface{}, interface{}, ...*options.ReplaceOptions) (*UpdateResult, error)
+	UpdateOne(context.Context, interface{}, interface{}, ...*options.UpdateOptions) (*UpdateResult, error)
+	UpdateMany(context.Context, interface{}, interface{}, ...*options.UpdateOptions) (*UpdateResult, error)
 	InsertOne(context.Context, interface{}) (*InsertOneResult, error)
 	InsertMany(context.Context, []interface{}) (*InsertManyResult, error)
 }

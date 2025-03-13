@@ -10,8 +10,8 @@ import (
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/anser/model"
 	"github.com/stretchr/testify/assert"
-	"go.mongodb.org/mongo-driver/v2/mongo"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // proofOfConcept is a simple mock "main" to demonstrate how you could
@@ -21,7 +21,7 @@ func proofOfConcept() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cl, err := mongo.Connect(options.Client().ApplyURI("mongodb://localhost:27017").SetConnectTimeout(100 * time.Millisecond))
+	cl, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://localhost:27017").SetConnectTimeout(100*time.Millisecond))
 	if err != nil {
 		return err
 	}
