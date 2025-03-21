@@ -43,10 +43,12 @@ const (
 	responseBytesAttribute     = "db.response_bytes"
 	strippedStatementAttribute = "db.statement.stripped"
 
-	// stackSkip is the number of frames to skip to start the stack at the function that called the driver.
-	stackSkip = 8
+	// stackSkip is the number of frames to skip to start the stack at the driver.
+	stackSkip = 4
 	// stackSize is the maximum number of frames to capture.
 	stackSize = 50
+	// driverFunctionPrefix is the prefix of [runtime.Frame.Function] for driver frames.
+	driverFunctionPrefix = "go.mongodb.org/mongo-driver"
 )
 
 // config is used to configure the mongo tracer.
@@ -534,6 +536,10 @@ func getStackTrace(stackSkip int) string {
 	stack := ""
 	for {
 		frame, more := frames.Next()
+		// Skip frames internal to the driver.
+		if strings.HasPrefix(frame.Function, driverFunctionPrefix) {
+			continue
+		}
 		stack += fmt.Sprintf("%s\n\t%s:%d\n", frame.Function, frame.File, frame.Line)
 
 		if !more {
