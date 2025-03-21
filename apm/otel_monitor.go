@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -41,6 +42,11 @@ const (
 	defaultTracerName          = "go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/mongo/otelmongo"
 	responseBytesAttribute     = "db.response_bytes"
 	strippedStatementAttribute = "db.statement.stripped"
+
+	// stackSkip is the number of frames to skip to start the stack at the function that called the driver.
+	stackSkip = 8
+	// stackSize is the maximum number of frames to capture.
+	stackSize = 50
 )
 
 // config is used to configure the mongo tracer.
@@ -139,6 +145,7 @@ func (m *monitor) Started(ctx context.Context, evt *event.CommandStartedEvent) {
 		semconv.NetPeerName(hostname),
 		semconv.NetPeerPort(port),
 		semconv.NetTransportTCP,
+		attribute.String("code.stacktrace", getStackTrace(stackSkip)),
 	}
 	if !m.cfg.CommandAttributeDisabled {
 		statementAttributes, err := m.dbStatementAttributes(evt)
@@ -512,4 +519,27 @@ func compactArray(arr bson.A) bson.A {
 	}
 
 	return compactedArray
+}
+
+func getStackTrace(stackSkip int) string {
+	pc := make([]uintptr, stackSize)
+	n := runtime.Callers(stackSkip, pc)
+	if n == 0 {
+		return ""
+	}
+
+	// Pass only valid pcs to runtime.CallersFrames.
+	pc = pc[:n]
+	frames := runtime.CallersFrames(pc)
+	stack := ""
+	for {
+		frame, more := frames.Next()
+		stack += fmt.Sprintf("%s\n\t%s:%d\n", frame.Function, frame.File, frame.Line)
+
+		if !more {
+			break
+		}
+	}
+
+	return stack
 }
