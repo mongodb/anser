@@ -566,3 +566,9 @@ func TestFormatStatement(t *testing.T) {
 		})
 	}
 }
+
+func TestGetStackTrace(t *testing.T) {
+	trace := getStackTrace(0)
+	assert.Contains(t, trace, "github.com/mongodb/anser/apm.getStackTrace")
+	assert.Contains(t, trace, "github.com/mongodb/anser/apm.TestGetStackTrace")
+}
