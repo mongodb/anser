@@ -4,21 +4,17 @@ go 1.24.0
 
 require (
 	github.com/evergreen-ci/birch v0.0.0-20250224221624-64f481f4b888
-	github.com/evergreen-ci/tarjan v0.0.0-20170824211642-fcd3f3321826
 	github.com/evergreen-ci/utility v0.0.0-20251203163234-8a1c0ea8b717
-	github.com/mongodb/amboy v0.0.0-20251209174146-73c46bb64973
 	github.com/mongodb/grip v0.0.0-20251203205830-b5c5c666ab94
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.10.0
 	go.mongodb.org/mongo-driver v1.17.6
 	go.opentelemetry.io/otel v1.19.0
 	go.opentelemetry.io/otel/trace v1.19.0
-	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22
 )
 
 require (
 	github.com/PuerkitoBio/rehttp v1.3.0 // indirect
-	github.com/VividCortex/ewma v1.2.0 // indirect
 	github.com/andygrunwald/go-jira v1.16.0 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.30.3 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.15 // indirect
@@ -50,6 +46,7 @@ require (
 	github.com/peterhellberg/link v1.2.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20221212215047-62379fc7944b // indirect
+	github.com/rogpeppe/go-internal v1.14.0 // indirect
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06 // indirect
 	github.com/shirou/gopsutil/v3 v3.23.9 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect

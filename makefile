@@ -1,7 +1,7 @@
 # start project configuration
 name := anser
 buildDir := build
-packages := $(name) mock model db bsonutil client apm backup
+packages := mock db bsonutil client apm backup
 orgPath := github.com/mongodb
 projectPath := $(orgPath)/$(name)
 testSrcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -path "*\#*")

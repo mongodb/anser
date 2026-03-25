@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/birch"
-	"github.com/mongodb/anser/model"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -106,7 +105,7 @@ func TestBackup(t *testing.T) {
 		require.Len(t, res.InsertedIDs, 10)
 
 		err = Collection(ctx, client, Options{
-			NS:     model.Namespace{DB: "foo", Collection: "bar"},
+			NS:     Namespace{DB: "foo", Collection: "bar"},
 			Target: files.Target,
 		})
 		require.NoError(t, err)
@@ -142,7 +141,7 @@ func TestBackup(t *testing.T) {
 		require.Len(t, res.InsertedIDs, 10)
 
 		err = Collection(ctx, client, Options{
-			NS:     model.Namespace{DB: "foo", Collection: "baz"},
+			NS:     Namespace{DB: "foo", Collection: "baz"},
 			Target: files.Target,
 			Query:  birch.DC.Elements(birch.EC.Int("a", 1)),
 		})
@@ -175,7 +174,7 @@ func TestBackup(t *testing.T) {
 		defer func() { require.NoError(t, client.Database("foo").Collection("fuz").Drop(ctx)) }()
 
 		err = Collection(ctx, client, Options{
-			NS:     model.Namespace{DB: "foo", Collection: "fuz"},
+			NS:     Namespace{DB: "foo", Collection: "fuz"},
 			Target: files.Target,
 		})
 		require.NoError(t, err)
@@ -208,7 +207,7 @@ func TestBackup(t *testing.T) {
 		require.Len(t, res.InsertedIDs, 10)
 
 		err = Collection(ctx, client, Options{
-			NS:          model.Namespace{DB: "foo", Collection: "bat"},
+			NS:          Namespace{DB: "foo", Collection: "bat"},
 			Target:      files.Target,
 			IndexesOnly: true,
 		})
@@ -226,7 +225,7 @@ func TestBackup(t *testing.T) {
 	})
 	t.Run("ProblemGettingTarget", func(t *testing.T) {
 		err = Collection(ctx, client, Options{
-			NS:     model.Namespace{DB: "foo", Collection: "noop"},
+			NS:     Namespace{DB: "foo", Collection: "noop"},
 			Target: files.TargetErrors,
 		})
 		require.Error(t, err)

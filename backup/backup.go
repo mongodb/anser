@@ -2,18 +2,26 @@ package backup
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"path/filepath"
 	"time"
 
 	"github.com/evergreen-ci/birch"
-	"github.com/mongodb/anser/model"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
+
+// Namespace reflects a MongoDB database name and collection pair.
+type Namespace struct {
+	DB         string `bson:"db_name" json:"db_name" yaml:"db_name"`
+	Collection string `bson:"collection" json:"collection" yaml:"collection"`
+}
+
+func (ns Namespace) String() string { return fmt.Sprintf("%s.%s", ns.DB, ns.Collection) }
 
 // WriterCreator provides a way to create writers (e.g. for file or
 // similar,) to support writing backup payloads without requiring
@@ -24,7 +32,7 @@ type WriterCreator func(context.Context, string) (io.WriteCloser, error)
 // collection. Query, Sort, and Limit are optional, but allow you to
 // constrain the backup.
 type Options struct {
-	NS            model.Namespace `bson:"ns" json:"ns" yaml:"ns"`
+	NS            Namespace `bson:"ns" json:"ns" yaml:"ns"`
 	Target        WriterCreator   `bson:"-" json:"-" yaml:"-"`
 	Query         interface{}     `bson:"query" json:"query" yaml:"query"`
 	Sort          interface{}     `bson:"sort" json:"sort" yaml:"sort"`
