@@ -82,9 +82,6 @@ functions:
 tasks:
   - <<: *run-build
     tags: ["test"]
-    name: test-anser
-  - <<: *run-build
-    tags: ["test"]
     name: test-bsonutil
   - <<: *run-build
     tags: ["test"]
@@ -95,13 +92,7 @@ tasks:
   - <<: *run-build
     tags: ["test"]
     name: test-mock
-  - <<: *run-build
-    tags: ["test"]
-    name: test-model
 
-  - <<: *run-build
-    tags: ["lint"]
-    name: lint-anser
   - <<: *run-build
     tags: ["lint"]
     name: lint-apm
@@ -117,9 +108,6 @@ tasks:
   - <<: *run-build
     tags: ["lint"]
     name: lint-mock
-  - <<: *run-build
-    tags: ["lint"]
-    name: lint-model
 
   - name: verify-mod-tidy
     commands:
