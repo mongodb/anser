@@ -158,7 +158,7 @@ type SingleResult struct {
 func NewSingleResult() *SingleResult {
 	doc := birch.NewDocument()
 	val, err := doc.MarshalBSON()
-	grip.Warning(err)
+	grip.Warning(context.Background(), err)
 
 	return &SingleResult{DecodeBytesValue: val}
 }

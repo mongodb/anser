@@ -121,7 +121,7 @@ func (opts *Options) flushData(ctx context.Context, client *mongo.Client) error 
 	}
 	defer func() { catcher.Add(target.Close()) }()
 
-	grip.InfoWhen(opts.EnableLogging, message.Fields{
+	grip.InfoWhen(ctx, opts.EnableLogging, message.Fields{
 		"ns":       opts.NS.String(),
 		"dur_secs": time.Since(startAt).Seconds(),
 		"seen":     seen,
@@ -137,7 +137,7 @@ func (opts *Options) flushData(ctx context.Context, client *mongo.Client) error 
 
 		seen++
 		if opts.EnableLogging && seen%1000 == 0 {
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"ns":       opts.NS.String(),
 				"dur_secs": time.Since(startAt).Seconds(),
 				"seen":     seen,
@@ -146,7 +146,7 @@ func (opts *Options) flushData(ctx context.Context, client *mongo.Client) error 
 		}
 	}
 
-	grip.InfoWhen(opts.EnableLogging, message.Fields{
+	grip.InfoWhen(ctx, opts.EnableLogging, message.Fields{
 		"ns":       opts.NS.String(),
 		"dur_secs": time.Since(startAt).Seconds(),
 		"seen":     seen,
