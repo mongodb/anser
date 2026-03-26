@@ -154,7 +154,7 @@ func (m *monitor) Started(ctx context.Context, evt *event.CommandStartedEvent) {
 		if err == nil {
 			attrs = append(attrs, statementAttributes...)
 		} else {
-			grip.ErrorWhen(sometimes.Percent(10), errors.Wrap(err, "getting command attributes"))
+			grip.ErrorWhen(ctx, sometimes.Percent(10), errors.Wrap(err, "getting command attributes"))
 		}
 	}
 	if collection, err := extractCollection(evt); err == nil && collection != "" {

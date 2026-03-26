@@ -34,7 +34,7 @@ func (m *loggingMonitor) flusher(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			grip.Info(m.Monitor.Rotate().Message())
+			grip.Info(ctx, m.Monitor.Rotate().Message())
 		}
 	}
 }
